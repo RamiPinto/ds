@@ -1,7 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h> //strcpy
 #include <mqueue.h> //message queues
 #include "keys.h"
+
+#define MAXSIZE 256
 
 struct request{
   int key;
@@ -36,6 +39,6 @@ int main(int argc, char **argv){
   mq_close(q_server);
   mq_close(q_client);
   mq_unlink("CLIENT_ONE");
-    
+
   return 0;
 }

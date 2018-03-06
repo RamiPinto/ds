@@ -12,10 +12,10 @@ all: $(BIN_FILES)
 .PHONY : all
 
 client: client.o libkeys.a
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@ -L. -lkeys
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@ -L. -lkeys -lrt
 
 server: server.o
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@ -lrt
 
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
