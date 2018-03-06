@@ -1,8 +1,6 @@
-BIN_FILES  = client server keys
+BIN_FILES  = keys client server
 
 CC = gcc
-
-
 CCGLAGS =	-Wall  -g
 
 LDFLAGS = -L$(INSTALL_PATH)/lib/
@@ -13,11 +11,8 @@ all: CFLAGS=$(CCGLAGS)
 all: $(BIN_FILES)
 .PHONY : all
 
-test: keys.o
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
-
-client: client.o
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+client: client.o libkeys.a
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@ -L. -lkeys
 
 server: server.o
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
@@ -25,8 +20,14 @@ server: server.o
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<
 
+libkeys.a:
+	ar -rv libkeys.a keys.o
+
+keys:
+	$(CC) -Wall -c keys.c
+
 clean:
-	rm -f $(BIN_FILES) *.o
+	rm -f $(BIN_FILES) *.o *.a
 
 .SUFFIXES:
 .PHONY : clean
