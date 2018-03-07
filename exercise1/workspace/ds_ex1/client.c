@@ -25,15 +25,22 @@ int main(int argc, char **argv){
 
   attr.mq_maxmsg = 1;
   attr.mq_msgsize = sizeof(int);
-  q_client = mq_open("CLIENT_ONE", O_CREAT|O_RDONLY, 0700, &attr);
+  if((q_client = mq_open("/CLIENT_ONE", O_CREAT|O_RDONLY, 0700, &attr))==-1){
+  	perror("[ERROR CLIENT] Cannot create client message queue.");
+	return 1;
+  }
 
-  q_server = mq_open("ADD_SERVER", O_WRONLY);
+  if((q_server = mq_open("/SERVER", O_WRONLY))==-1){
+  	perror("[ERROR CLIENT] Cannot create server message queue.");
+	return 1;
+  }
 
   /*Fill in request*/
   req.key=5;
   strcpy(req.value1, "value1 test");
   req.value2=(float)2.0;
-  strcpy(req.q_name, "CLIENT_ONE");
+  strcpy(req.q_name, "/CLIENT_ONE");
+  printf("Request filled.\n");
 
   mq_send(q_server, (char *)&req, sizeof(struct request), 0);
   mq_receive(q_client, (char *)&res, sizeof(int), 0);
@@ -41,7 +48,7 @@ int main(int argc, char **argv){
 
   mq_close(q_server);
   mq_close(q_client);
-  mq_unlink("CLIENT_ONE");
+  mq_unlink("/CLIENT_ONE");
 
   return 0;
 }
