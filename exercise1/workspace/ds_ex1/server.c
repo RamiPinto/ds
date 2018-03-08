@@ -40,31 +40,42 @@ void* process_message(void *msg){
 
   /*Execute client request and prepare reply*/
   result = msg_local.key;
-
+  printf("[SERVER] Server process is managing message with key %d.\n",result);
+  
   /*Return result to client by sending it to queue*/
-  q_client = mq_open(msg_local.q_name, O_WRONLY);
-
-  if(q_client == -1){
-    perror("[SERVER ERROR] Cannot open client queue.");
+  if((q_client = mq_open(msg_local.q_name, O_WRONLY))==-1){
+  perror("[SERVER ERROR] Cannot open client queue.");
+	//return -1;
   }
   else{
+    printf("[SERVER] Open client queue success. Sending reply...\n");
     mq_send(q_client, (char *)&result, sizeof(int), 0);
     mq_close(q_client);
   }
+
+  printf("[SERVER] Request managed. Exiting...\n");
   pthread_exit(0);
 }
 
 int main(int argc, char **argv){
 
   mqd_t q_server; /*server queue*/
+  char * server_name = "/SERVER";
+  int flags = O_RDWR | O_CREAT;
+  //mode_t mode;
+
   struct request msg; /*message to receive*/
+
   struct mq_attr q_attr;  /*queue atributes*/
+  q_attr.mq_flags=0;
+  q_attr.mq_maxmsg = 10;
+  q_attr.mq_msgsize = sizeof(struct request);
+  q_attr.mq_curmsgs=0;
+
   pthread_t thid;
   pthread_attr_t t_attr;  /*thread atributes*/
-  q_attr.mq_maxmsg = 20;
-  q_attr.mq_msgsize = sizeof(struct request);
 
-  if((q_server = mq_open("/SERVER",  O_CREAT|O_RDONLY,  0700,  &q_attr))==-1){
+  if((q_server = mq_open(server_name, flags, 0644, &q_attr))==-1){
     perror("[SERVER ERROR]Can’t create server queue");
     return 1;
   }
@@ -75,6 +86,7 @@ int main(int argc, char **argv){
 
   /* thread atributes */
   pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+  printf("[SERVER] Waiting requests...\n");
   while (TRUE){
     mq_receive(q_server, (char *)&msg, sizeof(struct request), 0);
 
