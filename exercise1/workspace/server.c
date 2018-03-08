@@ -26,11 +26,11 @@ struct request{
 void* process_message(void *msg){
   struct request msg_local; //local message
   mqd_t q_client; //client queue
-  int result;
+  int result=8008;
 
   /*thread copies message to local message*/
   pthread_mutex_lock(&mutex_msg);
-  memcpy((char *) &msg_local, (char *)&msg, sizeof(struct request));
+  memcpy((char *) &msg_local, (char *)msg, sizeof(struct request));
 
   /*Wake up server*/
   msg_not_copied=FALSE; //False = 0
@@ -60,7 +60,7 @@ void* process_message(void *msg){
 int main(int argc, char **argv){
 
   mqd_t q_server; /*server queue*/
-  char * server_name = "/SERVER";
+  char * server_name = "/SERVER1";
   int flags = O_RDWR | O_CREAT;
   //mode_t mode;
 
@@ -88,7 +88,7 @@ int main(int argc, char **argv){
   pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
   printf("[SERVER] Waiting requests...\n");
   while (TRUE){
-    mq_receive(q_server, (char *)&msg, sizeof(struct request), 0);
+    mq_receive(q_server, (char *)&msg, sizeof(struct message), 0);
 
     pthread_create(&thid, &t_attr, process_message, &msg);
 

@@ -25,13 +25,13 @@ int main(int argc, char **argv){
 
   attr.mq_maxmsg = 1;
   attr.mq_msgsize = sizeof(int);
-  if((q_client = mq_open("/CLIENT_ONE", O_CREAT|O_RDONLY, 0644, &attr))==-1){
+  if((q_client = mq_open("/CLIENT_ONE1", O_CREAT|O_RDWR, 0644, &attr))==-1){
   	perror("[ERROR CLIENT] Cannot create client message queue.");
 	return 1;
   }
   printf("[CLIENT] Client queue created.\n");
 
-  if((q_server = mq_open("/SERVER", O_WRONLY))==-1){
+  if((q_server = mq_open("/SERVER1", O_WRONLY))==-1){
   	perror("[ERROR CLIENT] Cannot open server message queue.");
 	return 1;
   }
@@ -41,16 +41,23 @@ int main(int argc, char **argv){
   req.key=5;
   strcpy(req.value1, "value1 test");
   req.value2=(float)2.0;
-  strcpy(req.q_name, "/CLIENT_ONE");
+  strcpy(req.q_name, "/CLIENT_ONE1");
   printf("Request filled.\n");
 
-  mq_send(q_server, (char *)&req, sizeof(struct request), 0);
-  mq_receive(q_client, (char *)&res, sizeof(int), 0);
-  printf("[CLIENT] Received message: %s\n",(char *)&res);
+  if((mq_send(q_server, (char *)&req, sizeof(struct request), 0))==-1){
+  	perror("[ERROR] Error sending request.");
+	return 1;
+  }
+  printf("[CLIENT] Request sent to client queue %s -- key: %d, value1= %s, value2= %f\n",req.q_name,req.key,req.value1,req.value2);
+  if((mq_receive(q_client, (char *)&res, sizeof(int), 0))==-1){
+  	perror("[ERROR] Error receiving server reply.");
+	return 1;
+  }
+  printf("[CLIENT] Received message: %d\n",res);
 
   mq_close(q_server);
   mq_close(q_client);
-  mq_unlink("/CLIENT_ONE");
+  mq_unlink("/CLIENT_ONE1");
 
   return 0;
 }
