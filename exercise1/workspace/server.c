@@ -23,10 +23,145 @@ struct request{
   char q_name[MAXSIZE]; //client queue name where the server sends the reply
 };
 
+struct Node {
+	struct request myreq;
+	struct Node *next;
+};
+
+int s_init(struct Node** head_ref){
+	
+	struct Node* current = *head_ref;
+	struct Node* next;
+
+	while(current != NULL){
+		next = current->next;
+		free(current);
+		current = next;
+	}
+
+	*head_ref = NULL;
+	return 0;
+}
+
+int s_set_value(struct Node **head_ref, struct request *req){
+	
+	//Allocate node
+	struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
+
+	//insert data
+	//memcpy((char *)new_node->myreq,(char *) req, sizeof(struct request));
+	new_node->myreq=(*req);
+	new_node->next = (*head_ref);
+	(*head_ref)=new_node;
+
+	return 0;
+}
+
+struct request* s_get_value(struct Node* node, int key){
+
+	struct request* myrequest=NULL;
+	
+	*myrequest = node->myreq;
+	
+	while(node != NULL && myrequest->key != key){
+		node = node->next;
+		*myrequest = node->myreq;	
+	}
+	if(node==NULL){
+		return NULL;
+	}
+	
+	return myrequest;
+}
+
+int s_modify_value(struct Node* node, struct request *myrequest){
+
+	struct request* node_req=(struct request*)malloc(sizeof(struct request));
+	char * temp_v1;
+	float temp_v2;
+
+	*node_req = node->myreq;
+
+	while(node != NULL && node_req->key != myrequest->key){
+		node = node->next;
+		*node_req = node->myreq;	
+	}
+	if(node==NULL){
+		return -1;
+	}
+
+	temp_v1 = myrequest->value1;
+	temp_v2= myrequest->value2;
+	memcpy(node_req->value1,temp_v1,sizeof(temp_v1)+1);
+	node_req->value2 = temp_v2;
+	node->myreq = *node_req;
+	free(node_req);
+	return 0;
+}
+
+
+int s_delete_key(struct Node **head_ref, int key){
+
+	struct Node* temp = *head_ref, *prev;
+	struct request *myrequest = (struct request*) malloc(sizeof(struct request));
+	
+	*myrequest = temp->myreq;
+
+	if(temp != NULL && myrequest->key == key){
+		*head_ref = temp->next;
+		free(temp);
+		return 0;
+	}
+	
+	while(temp != NULL && myrequest->key != key){
+		prev = temp;
+		temp = temp->next;
+		*myrequest = temp->myreq;	
+	}
+	if(temp==NULL){
+		return -1;
+	}
+	prev->next=temp->next;
+	free(temp);
+	free(myrequest);
+
+	return 0;
+}
+
+int s_num_items(struct Node *node){
+	int counter;
+
+	for(counter=1;node!=NULL;counter++){
+		node = node->next;
+	}
+
+	return counter;
+}
+
+void print_list(struct Node *node){
+	
+	struct request* current_req = (struct request*) malloc(sizeof(struct request));
+	int i;
+
+  	//memcpy((char *) node, (char *)&mynode, sizeof(struct Node));
+  	//memcpy((char *) &current_req, (char *)&mynode.myreq, sizeof(struct request));
+	*current_req = node->myreq;
+	printf("Printing list:\n");
+	for(i=0;node!= NULL;i++){
+		printf("Element %d: key %d - value1 %s - value2 %f\n",i,current_req->key, current_req->value1, current_req->value2);
+	node = node->next;
+	}
+	free(current_req);
+
+}
+
+
+
 void* process_message(void *msg){
   struct request msg_local; //local message
   mqd_t q_client; //client queue
-  int result=8008;
+  int result=0;
+  struct Node* head = NULL;
 
   /*thread copies message to local message*/
   pthread_mutex_lock(&mutex_msg);
@@ -40,6 +175,9 @@ void* process_message(void *msg){
 
   /*Execute client request and prepare reply*/
   result = msg_local.key;
+  /*TEST*/
+  s_set_value(&head,&msg_local);
+  print_list(head);
   printf("[SERVER] Server process is managing message with key %d.\n",result);
   
   /*Return result to client by sending it to queue*/
@@ -88,7 +226,7 @@ int main(int argc, char **argv){
   pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
   printf("[SERVER] Waiting requests...\n");
   while (TRUE){
-    mq_receive(q_server, (char *)&msg, sizeof(struct message), 0);
+    mq_receive(q_server, (char *)&msg, sizeof(struct request), 0);
 
     pthread_create(&thid, &t_attr, process_message, &msg);
 
