@@ -8,12 +8,6 @@
 #define TRUE 1
 #define FALSE 0
 
-struct request{
-  int key;
-  char value1[MAXSIZE];
-  float value2;
-  char q_name[MAXSIZE]; //client queue name where the server sends the reply
-};
 
 int main(int argc, char **argv){
   mqd_t q_server; //Server message queue

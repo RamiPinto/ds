@@ -12,3 +12,12 @@ header-includes:
 ![](./img/logo_uc3m.png)
 
 \newpage
+
+#1. jbashab
+*italic*
+**bold**
+***bolditalic***
+
+Hello askjashdbas  $1/geq0$
+
+$$x/geq y$$
