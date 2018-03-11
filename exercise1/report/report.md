@@ -13,9 +13,9 @@ header-includes:
 
 \newpage
 
-#1. Description of the code
+# 1. Description of the code
 
-##1.1. server.c
+## 1.1. server.c
 
 File *server.c* contains the server code responsible for managing the data structures that store the information. In our case, the data structure chosen was a linked list, which is an easy way to implement a dynamic storage system that does not set a limit on the number of elements that can be stored. For its implementation we have based on the code provided by the website [geeksforgeeks.com](https://www.geeksforgeeks.org/linked-list-set-1-introduction/ "Linked List Introduction"). From which, we made the necessary changes to adapt it to the functions and data that we had to manage. The elements of the list are structs called *Node*, which contains one struct request *(See section keys.h)* and the pointer of the next element of the chain.
 
@@ -51,7 +51,7 @@ In addition, the ***print_list*** function was implemented for debugging purpose
 The first element of our linked list is declared as *head*. This element is passed as argument to all the functions that deal with the linked list. It may be passed by reference (*Node\*\* head_ref*) or by value (*Node\* node*).
 
 
-##1.2. keys.c
+## 1.2. keys.c
 
 File *keys.c* contains the implementation of the API calls used by the clients. All functions follow the same structure:
 
@@ -83,7 +83,7 @@ For efficiency reasons other support functions were implemented. The purpose of 
 - **int receive(struct request \* reply)**: It receive the servers reply by using *mq_receive*.
 
 
-##1.3. keys.h
+## 1.3. keys.h
 
 File *keys.h* is the header file which is included in the *server.c* and *client.c* files. This header provides the declaration of the functions implemented in *keys.c* and the *struct request* used as message in the posix queues communication process. *Struct request* contains 5 attributes:
 
@@ -103,12 +103,12 @@ struct request{
 };
 ```
 
-##1.4. client.c
+## 1.4. client.c
 
 File *client.c* invokes the functions implemented in *keys.c*. It has been used for tenting purposes. Further explanation on section *2* (*Testing plan*).
 
 
-##1.5 Makefile
+## 1.5 Makefile
 
 File *Makefile* is an script which allows to compile the client, server and keys files. In addition, it automatically creates and links *libkeys.a* static library.
 
@@ -117,7 +117,7 @@ Finally, it includes an option for deleting all the executable files previously 
 
 \newpage
 
-#2. Test plan
+# 2. Test plan
 
 The test plan has been designed with the purpose of checking all the requirements described in the exercise statement. In order to achieve this, we have implemented a test plan in the *client.c* file that invoke the *libkeys.a* library functions in different contexts. Each function is invoking at least one time for testing: its normal execution, the empty list case and the no existing/repeated key.
 
