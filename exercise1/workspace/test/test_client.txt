@@ -1,0 +1,22 @@
+Initialization of the system. Previous values have been deleted.
+Element with key 1 inserted.
+[ERROR] Cannot insert value with key 1: Repeated key
+Element with key 3 inserted.
+Initialization of the system. Previous values have been deleted.
+Number of items stored calculated.
+Number of items: 0
+Element with key 1 inserted.
+Element with key 2 inserted.
+Values of the element with key 2 obtained.
+The obtained values were: value1 - Bye and value2 - 2.000000
+[ERROR] Cannot get element with key 8: Not existing key.
+Element with key 1 modified.
+[ERROR] Cannot modify element with key 8: Not existing key.
+Values of the element with key 1 obtained.
+The obtained values were: value1 - Modified and value2 - 5.000000
+Number of items stored calculated.
+Number of items: 2
+Element with key 1 deleted.
+[ERROR] Cannot delete element with key 8: Not existing key.
+Number of items stored calculated.
+Number of items: 1

@@ -26,7 +26,7 @@ struct Node {
 struct Node* head = NULL;
 
 int s_init(struct Node** head_ref){
-	
+
 	struct Node* current = *head_ref;
 	struct Node* next;
 
@@ -41,17 +41,17 @@ int s_init(struct Node** head_ref){
 }
 
 int s_set_value(struct Node **head_ref, struct request *req){
-	
+
 	//Allocate node
 	struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
 	struct Node* temp = *head_ref;
 	struct request *myrequest = (struct request *)malloc(sizeof(struct request));
-	
+
 	if (temp!=NULL){
-		
+
 		*myrequest = temp->myreq;
-	
-		//Search repeated keys 
+
+		//Search repeated keys
 		while(temp != NULL && myrequest->key != req->key){
 
 			temp = temp->next;
@@ -70,7 +70,7 @@ int s_set_value(struct Node **head_ref, struct request *req){
 	new_node->myreq=(*req);
 	new_node->next = (*head_ref);
 	(*head_ref)=new_node;
-	
+
 
 	free(myrequest);
 	return 0;
@@ -79,13 +79,13 @@ int s_set_value(struct Node **head_ref, struct request *req){
 struct request* s_get_value(struct Node* node, int key){
 
 	struct request* myrequest = (struct request*) malloc(sizeof(struct request));
-	
+
 	if(node!=NULL){
 		*myrequest = node->myreq;
-	
+
 		while(node != NULL && myrequest->key != key){
 			node = node->next;
-			if(node != NULL) *myrequest = node->myreq;	
+			if(node != NULL) *myrequest = node->myreq;
 		}
 		if(node==NULL){	//No key found
 			myrequest->fcode=1;
@@ -97,7 +97,7 @@ struct request* s_get_value(struct Node* node, int key){
 	else{
 		myrequest->fcode=-1;
 	}
-	
+
 	return myrequest;
 }
 
@@ -107,14 +107,14 @@ int s_modify_value(struct Node* node, struct request *myrequest){
 	char * temp_v1;
 	float temp_v2;
 	int result=0;
-	
+
 	if(node!=NULL){
 
 		*node_req = node->myreq;
 
 		while(node != NULL && node_req->key != myrequest->key){
 			node = node->next;
-			if(node != NULL) *node_req = node->myreq;	
+			if(node != NULL) *node_req = node->myreq;
 		}
 		if(node==NULL){
 			result=1;
@@ -152,11 +152,11 @@ int s_delete_key(struct Node **head_ref, int key){
 			result = 0;
 		}
 		else{
-	
+
 			while(temp != NULL && myrequest->key != key){
 				prev = temp;
 				temp = temp->next;
-				if(temp != NULL) *myrequest = temp->myreq;	
+				if(temp != NULL) *myrequest = temp->myreq;
 			}
 			if(temp==NULL){
 				result = 1;
@@ -192,7 +192,7 @@ int s_num_items(struct Node *node){
 }
 
 void print_list(struct Node *node){
-	
+
 	struct request* current_req = (struct request*) malloc(sizeof(struct request));
 	int i;
 
@@ -217,38 +217,34 @@ void print_list(struct Node *node){
 
 
 void* process_message(void *msg){
-  	struct request msg_local; //local message
+	struct request msg_local; //local message
 	struct request reply;
-  	mqd_t q_client; //client queue
+	mqd_t q_client; //client queue
 
 
-  	/*thread copies message to local message*/
- 	pthread_mutex_lock(&mutex_msg);
-  	memcpy((char *) &msg_local, (char *)msg, sizeof(struct request));
-	
+	/*thread copies message to local message*/
+	pthread_mutex_lock(&mutex_msg);
+	memcpy((char *) &msg_local, (char *)msg, sizeof(struct request));
+
 	//Default reply
 	reply.key=0;
 	strcpy(reply.value1," ");
 	reply.value2=(float)0.0;
 	strcpy(reply.q_name,"/SERVER1");
 	reply.fcode=-1;
-  	
-	/*Wake up server*/
-  	msg_not_copied=FALSE; //False = 0
 
-  	pthread_cond_signal(&cond_msg);
-  	pthread_mutex_unlock(&mutex_msg);
-	
+
 	printf("Managing client %s request...\n", msg_local.q_name);
 
+	/*Manage request*/
 	switch(msg_local.fcode){
 		case -1:
 			printf("[ERROR] Error in request\n");
 			reply.fcode = -1;
-	
+
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
 				perror("[ERROR] Cannot open client queue");
-				reply.fcode=-1;			
+				reply.fcode=-1;
 			}
 			else{
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) perror("[ERROR] Cannot send message to client");
@@ -263,7 +259,7 @@ void* process_message(void *msg){
 
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
 				perror("[ERROR] Cannot open client queue");
-				reply.fcode=-1;			
+				reply.fcode=-1;
 			}
 			else{
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) perror("[ERROR] Cannot send message to client");
@@ -277,7 +273,7 @@ void* process_message(void *msg){
 
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
 				perror("[ERROR] Cannot open client queue");
-				reply.fcode=-1;			
+				reply.fcode=-1;
 			}
 			else{
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) perror("[ERROR] Cannot send message to client");
@@ -287,12 +283,12 @@ void* process_message(void *msg){
 			break;
 		case 2:
 			printf("Executing get_value\n");
-			
+
   			memcpy((char *) &reply, (char *)s_get_value(head, msg_local.key), sizeof(struct request));
 
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
 				perror("[ERROR] Cannot open client queue");
-				reply.fcode=-1;			
+				reply.fcode=-1;
 			}
 			else{
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) perror("[ERROR] Cannot send message to client");
@@ -306,7 +302,7 @@ void* process_message(void *msg){
 
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
 				perror("[ERROR] Cannot open client queue");
-				reply.fcode=-1;			
+				reply.fcode=-1;
 			}
 			else{
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) perror("[ERROR] Cannot send message to client");
@@ -320,7 +316,7 @@ void* process_message(void *msg){
 
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
 				perror("[ERROR] Cannot open client queue");
-				reply.fcode=-1;			
+				reply.fcode=-1;
 			}
 			else{
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) perror("[ERROR] Cannot send message to client");
@@ -331,10 +327,10 @@ void* process_message(void *msg){
 		case 5:
 			printf("Executing num_items\n");
 			reply.fcode = s_num_items(head);
-	
+
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
 				perror("[ERROR] Cannot open client queue");
-				reply.fcode=-1;			
+				reply.fcode=-1;
 			}
 			else{
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) perror("[ERROR] Cannot send reply to client");
@@ -347,64 +343,70 @@ void* process_message(void *msg){
 
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
 				perror("[ERROR] Cannot open client queue");
-				reply.fcode=-1;			
+				reply.fcode=-1;
 			}
 			else{
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) perror("[ERROR] Cannot send message to client");
 				if(mq_close(q_client)==-1) perror("[ERROR] Cannot close client queue");
 			}
-	
+
 	}
 
 
- 	printf("Request managed. Exiting...\n\n");
-  	pthread_exit(0);
+	/*Wake up server*/
+	msg_not_copied=FALSE; //False = 0
+
+	pthread_cond_signal(&cond_msg);
+	pthread_mutex_unlock(&mutex_msg); //Exit critical section
+
+	printf("Request managed. Exiting...\n\n");
+	pthread_exit(0);
 }
 
 
 int main(int argc, char **argv){
 
-  mqd_t q_server; /*server queue*/
-  char * server_name = "/SERVER1";
-  int flags = O_RDWR | O_CREAT;
-  //mode_t mode;
+	mqd_t q_server; /*server queue*/
+	char * server_name = "/SERVER1";
+	int flags = O_RDWR | O_CREAT;
+	//mode_t mode;
 
-  struct request msg; /*message to receive*/
+	struct request msg; /*message to receive*/
 
-  struct mq_attr q_attr;  /*queue atributes*/
-  q_attr.mq_flags=0;
-  q_attr.mq_maxmsg = 10;
-  q_attr.mq_msgsize = sizeof(struct request);
-  q_attr.mq_curmsgs=0;
+	struct mq_attr q_attr;  /*queue atributes*/
+	q_attr.mq_flags=0;
+	q_attr.mq_maxmsg = 10;
+	q_attr.mq_msgsize = sizeof(struct request);
+	q_attr.mq_curmsgs=0;
 
-  pthread_t thid;
-  pthread_attr_t t_attr;  /*thread atributes*/
+	pthread_t thid;
+	pthread_attr_t t_attr;  /*thread atributes*/
 
-  if((q_server = mq_open(server_name, flags, 0644, &q_attr))==-1){
-    perror("[ERROR]Can’t create server queue");
-    return 1;
-  }
+	if((q_server = mq_open(server_name, flags, 0644, &q_attr))==-1){
+		perror("[ERROR]Can’t create server queue");
+		return 1;
+	}
 
-  pthread_mutex_init(&mutex_msg, NULL);
-  pthread_cond_init(&cond_msg, NULL);
-  pthread_attr_init(&t_attr);
+	pthread_mutex_init(&mutex_msg, NULL);
+	pthread_cond_init(&cond_msg, NULL);
+	pthread_attr_init(&t_attr);
 
-  /* thread atributes */
-  pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
-  printf("[%s] Waiting requests...\n\n", server_name);
-  while (TRUE){
-    mq_receive(q_server, (char *)&msg, sizeof(struct request), 0);
+	/* thread atributes */
+	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+	printf("[%s] Waiting requests...\n\n", server_name);
+	while (TRUE){
+		mq_receive(q_server, (char *)&msg, sizeof(struct request), 0);
 
-    pthread_create(&thid, &t_attr, process_message, &msg);
+		pthread_create(&thid, &t_attr, process_message, &msg);
 
-    /*Critical section - wait for thread to copy message*/
-    pthread_mutex_lock(&mutex_msg);
-    while (msg_not_copied){
-      pthread_cond_wait(&cond_msg, &mutex_msg);
-    }
-    msg_not_copied = TRUE;
-    pthread_mutex_unlock(&mutex_msg);
-  }
+		/*Critical section - wait for thread to copy message*/
+		pthread_mutex_lock(&mutex_msg);
+		while (msg_not_copied){
+			pthread_cond_wait(&cond_msg, &mutex_msg);
+		}
+		msg_not_copied = TRUE;
+		pthread_mutex_unlock(&mutex_msg);
+	}
 
-  return 0;
+	return 0;
 }

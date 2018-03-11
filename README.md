@@ -15,7 +15,7 @@ Created on March 6th, 2018, 13:00 PM
 
 Report template created with pandoc markdown. In order to compile the report use command:
 
-pandoc design.md -o design.pdf --latex-engine=xelatex
+pandoc report.md -o report.pdf --latex-engine=xelatex
 
 Pandoc can interpret LaTex commands. For using LaTex commands (not all available) type '/' symbol before command and include the package in the header if necessary.
 
