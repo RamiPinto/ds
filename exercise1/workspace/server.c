@@ -11,6 +11,7 @@
 #define TRUE 1
 #define FALSE 0
 
+
 /* mutex and condition variables for the message copy */
 pthread_mutex_t mutex_msg;
 int msg_not_copied = TRUE;  //TRUE =1
@@ -20,6 +21,9 @@ struct Node {
 	struct request myreq;
 	struct Node *next;
 };
+
+//Linked list
+struct Node* head = NULL;
 
 int s_init(struct Node** head_ref){
 	
@@ -40,27 +44,27 @@ int s_set_value(struct Node **head_ref, struct request *req){
 	
 	//Allocate node
 	struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
-	struct Node* temp = *head_ref;
-	struct request *myrequest = (struct request *)malloc(sizeof(struct request));
+//	struct Node* temp = *head_ref;
+//	struct request *myrequest = (struct request *)malloc(sizeof(struct request));
 	
-	if(*head_ref==NULL){
+	//if(temp==NULL){
 		new_node->myreq=(*req);
 		new_node->next = (*head_ref);
 		(*head_ref)=new_node;
-	}
-	else{
+	//}
+	/*else{
 		
 		*myrequest = temp->myreq;
 	
 		//Search repeated keys 
 		while(temp != NULL && myrequest->key != req->key){
 			temp = temp->next;
+			if(temp==NULL){ //repeated key
+				free(new_node);
+				free(myrequest);
+				return 1;
+			}
 			*myrequest = temp->myreq;
-		}
-		if(temp!=NULL){
-			free(new_node);
-			free(myrequest);
-			return -1;
 		}
 
 		//insert data
@@ -70,20 +74,20 @@ int s_set_value(struct Node **head_ref, struct request *req){
 		(*head_ref)=new_node;
 	}
 
-	free(myrequest);
+	free(myrequest);*/
 	return 0;
 }
 
 struct request* s_get_value(struct Node* node, int key){
 
-	struct request* myrequest=NULL;
-
+	struct request* myrequest = (struct request*) malloc(sizeof(struct request));
+	
 	if(node!=NULL){
 		*myrequest = node->myreq;
 	
 		while(node != NULL && myrequest->key != key){
 			node = node->next;
-			*myrequest = node->myreq;	
+			if(node != NULL) *myrequest = node->myreq;	
 		}
 		if(node==NULL){
 			myrequest->fcode=-1;
@@ -170,11 +174,10 @@ int s_delete_key(struct Node **head_ref, int key){
 }
 
 int s_num_items(struct Node *node){
-	int counter;
-
+	int counter=0;
 	if(node != NULL){
 
-		for(counter=1;node!=NULL;counter++){
+		for(counter=0;node!=NULL;counter++){
 			node = node->next;
 		}
 	}
@@ -198,6 +201,7 @@ void print_list(struct Node *node){
 		for(i=0;node!= NULL;i++){
 			printf("Element %d: key %d - value1 %s - value2 %f\n",i,current_req->key, current_req->value1, current_req->value2);
 			node = node->next;
+			if(node!=NULL) *current_req = node->myreq;
 		}
 	}
 	else{
@@ -213,8 +217,6 @@ void* process_message(void *msg){
   	struct request msg_local; //local message
 	struct request reply;
   	mqd_t q_client; //client queue
-  	int result=0;
-  	struct Node* head = NULL;
 
 
   	/*thread copies message to local message*/
@@ -234,9 +236,11 @@ void* process_message(void *msg){
   	pthread_cond_signal(&cond_msg);
   	pthread_mutex_unlock(&mutex_msg);
 	
+	printf("Managing request...\n");
+
 	switch(msg_local.fcode){
 		case -1:
-
+			printf("[SERVER ERROR] Error in request\n");
 			reply.fcode = -1;
 	
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
@@ -250,6 +254,8 @@ void* process_message(void *msg){
 
 			break;
 		case 0:
+			printf("Executing init\n");
+
 			reply.fcode = s_init(&head);
 
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
@@ -260,9 +266,10 @@ void* process_message(void *msg){
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) reply.fcode=-1;
 				if(mq_close(q_client)==-1) reply.fcode=-1;
 			}
-
+			print_list(head);
 			break;
 		case 1:
+			printf("Executing set_value\n");
 			reply.fcode = s_set_value(&head,&msg_local);
 
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
@@ -273,8 +280,10 @@ void* process_message(void *msg){
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) reply.fcode=-1;
 				if(mq_close(q_client)==-1) reply.fcode=-1;
 			}
+			print_list(head);
 			break;
 		case 2:
+			printf("Executing get_value\n");
 			
   			memcpy((char *) &reply, (char *)s_get_value(head, msg_local.key), sizeof(struct request));
 
@@ -284,10 +293,12 @@ void* process_message(void *msg){
 			}
 			else{
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) reply.fcode=-1;
-				if(mq_close(q_client)==-1) reply.fcode=-1;
+				if(mq_close(q_client)==-1) perror("[ERROR] Cannot close client queue");
 			}
+			print_list(head);
 			break;
 		case 3:
+			printf("Executing modify_value\n");
 			reply.fcode = s_modify_value(head, &msg_local);
 
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
@@ -298,8 +309,10 @@ void* process_message(void *msg){
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) reply.fcode=-1;
 				if(mq_close(q_client)==-1) reply.fcode=-1;
 			}
+			print_list(head);
 			break;
 		case 4:
+			printf("Executing delete_key\n");
 			reply.fcode = s_delete_key(&head,msg_local.key);
 
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
@@ -310,8 +323,10 @@ void* process_message(void *msg){
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) reply.fcode=-1;
 				if(mq_close(q_client)==-1) reply.fcode=-1;
 			}
+			print_list(head);
 			break;
 		case 5:
+			printf("Executing num_items\n");
 			reply.fcode = s_num_items(head);
 	
 			if((q_client=mq_open(msg_local.q_name, O_WRONLY))==-1){
@@ -319,9 +334,10 @@ void* process_message(void *msg){
 				reply.fcode=-1;			
 			}
 			else{
-				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) reply.fcode=-1;
-				if(mq_close(q_client)==-1) reply.fcode=-1;
+				if(mq_send(q_client, (char *)&reply, sizeof(struct request), 0)==-1) perror("[ERROR] Cannot send reply to client");
+				if(mq_close(q_client)==-1) perror("[ERROR] Cannot close client queue");
 			}
+			print_list(head);
 			break;
 		default:
 			reply.fcode = -1;
@@ -334,21 +350,20 @@ void* process_message(void *msg){
 				if(mq_send(q_client, (char *)&reply, sizeof(struct request),0)==-1) reply.fcode=-1;
 				if(mq_close(q_client)==-1) reply.fcode=-1;
 			}
-			
 	
 	}
 
 	/***************************/
-	
- 	/*Execute client request and prepare reply*/
+	/*
+ 	//Execute client request and prepare reply
   	result = msg_local.key;
-  	/*TEST*/
+  	//TEST
   	s_init(&head);
   	s_set_value(&head,&msg_local);
   	print_list(head);
   	printf("[SERVER] Server process is managing message with key %d.\n",result);
   
-  	/*Return result to client by sending it to queue*/
+  	//Return result to client by sending it to queue
   	if((q_client = mq_open(msg_local.q_name, O_WRONLY))==-1){
   		perror("[SERVER ERROR] Cannot open client queue.");
 		//return -1;
@@ -357,7 +372,7 @@ void* process_message(void *msg){
    		printf("[SERVER] Open client queue success. Sending reply...\n");
    		mq_send(q_client, (char *)&result, sizeof(int), 0);
     		mq_close(q_client);
-  	}
+  	} */
 
 	/******************************/
 

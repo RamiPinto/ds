@@ -33,7 +33,7 @@ int close_conection(void){
 	if(mq_close(q_server)==-1) return -1;
 	if(mq_close(q_client)==-1) return -1;
 	if(mq_unlink("/CLIENT_ONE1")==-1) return -1;
-	return -1;
+	return 0;
 }
 
 
@@ -93,13 +93,17 @@ int set_value(int key, char *value1, float value2){
 	if(send(&req)==-1) return -1;
 	if(receive(&reply)==-1) return -1;
 	if(reply.fcode==-1) return -1;
+	if(reply.fcode==1){
+		printf("[ERROR] Repeated key. Cannot insert values\n");
+		return -1;
+	}
 
 	if(close_conection()==-1) return -1;
 	return 0;
 }
 
 
-int get_value(int key, char *value1, float *value2){
+int get_value(int key, char **value1, float *value2){
 
 	struct request req;
 	struct request reply;
@@ -111,7 +115,7 @@ int get_value(int key, char *value1, float *value2){
 	strcpy(req.value1, "get");
 	req.value2 = (float)0.0;
 	strcpy(req.q_name,"/CLIENT_ONE1");
-	req.fcode = 5;
+	req.fcode = 2;
 
 	if(send(&req)==-1) return -1;
 	if(receive(&reply)==-1) return -1;
@@ -119,7 +123,7 @@ int get_value(int key, char *value1, float *value2){
 	       	return -1;
 	}
 	else{
-		value1=reply.value1;
+		*value1=reply.value1;
 		*value2=reply.value2;
 	}
 
@@ -178,9 +182,9 @@ int num_items(){
 		
 	struct request req;
 	struct request reply;
+	int result;
 	if(open_client()==-1)return -1;
 	if(connect_server()==-1) return -1;
-
 	//Fill request
 	req.key=0;
 	strcpy(req.value1, "count");
@@ -191,8 +195,11 @@ int num_items(){
 	if(send(&req)==-1) return -1;
 	if(receive(&reply)==-1) return -1;
 	if(reply.fcode==-1) return -1;
+	
+	result = reply.fcode;
 
 	if(close_conection()==-1) return -1;
-	return 0;
+
+	return result;
 }
 
