@@ -44,37 +44,35 @@ int s_set_value(struct Node **head_ref, struct request *req){
 	
 	//Allocate node
 	struct Node* new_node = (struct Node*) malloc(sizeof(struct Node));
-//	struct Node* temp = *head_ref;
-//	struct request *myrequest = (struct request *)malloc(sizeof(struct request));
+	struct Node* temp = *head_ref;
+	struct request *myrequest = (struct request *)malloc(sizeof(struct request));
 	
-	//if(temp==NULL){
-		new_node->myreq=(*req);
-		new_node->next = (*head_ref);
-		(*head_ref)=new_node;
-	//}
-	/*else{
+	if (temp!=NULL){
 		
 		*myrequest = temp->myreq;
 	
 		//Search repeated keys 
 		while(temp != NULL && myrequest->key != req->key){
-			temp = temp->next;
+			
 			if(temp==NULL){ //repeated key
 				free(new_node);
 				free(myrequest);
 				return 1;
 			}
-			*myrequest = temp->myreq;
+
+			temp = temp->next;
+			if(temp!=NULL) *myrequest = temp->myreq;
 		}
+	}
 
 		//insert data
 		//memcpy((char *)new_node->myreq,(char *) req, sizeof(struct request));
-		new_node->myreq=(*req);
-		new_node->next = (*head_ref);
-		(*head_ref)=new_node;
-	}
+	new_node->myreq=(*req);
+	new_node->next = (*head_ref);
+	(*head_ref)=new_node;
+	
 
-	free(myrequest);*/
+	free(myrequest);
 	return 0;
 }
 
@@ -353,30 +351,8 @@ void* process_message(void *msg){
 	
 	}
 
-	/***************************/
-	/*
- 	//Execute client request and prepare reply
-  	result = msg_local.key;
-  	//TEST
-  	s_init(&head);
-  	s_set_value(&head,&msg_local);
-  	print_list(head);
-  	printf("[SERVER] Server process is managing message with key %d.\n",result);
-  
-  	//Return result to client by sending it to queue
-  	if((q_client = mq_open(msg_local.q_name, O_WRONLY))==-1){
-  		perror("[SERVER ERROR] Cannot open client queue.");
-		//return -1;
-  	}
-  	else{
-   		printf("[SERVER] Open client queue success. Sending reply...\n");
-   		mq_send(q_client, (char *)&result, sizeof(int), 0);
-    		mq_close(q_client);
-  	} */
 
-	/******************************/
-
- 	printf("[SERVER] Request managed. Exiting...\n");
+ 	printf("[SERVER] Request managed. Exiting...\n\n");
   	pthread_exit(0);
 }
 
@@ -409,7 +385,7 @@ int main(int argc, char **argv){
 
   /* thread atributes */
   pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
-  printf("[SERVER] Waiting requests...\n");
+  printf("[SERVER] Waiting requests...\n\n");
   while (TRUE){
     mq_receive(q_server, (char *)&msg, sizeof(struct request), 0);
 

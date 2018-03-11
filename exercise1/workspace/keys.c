@@ -16,7 +16,7 @@ int open_client(void){
 		perror("[ERROR] Cannot open client message queue");
 		return -1;
 	}
-	printf("Client queue opened.\n");
+	//printf("Client queue opened.\n");
 	return 0;
 }
 
@@ -72,6 +72,8 @@ int init(){
 	
 	if(close_conection()==-1) return -1;
 
+	printf("Initialization of the system. Previous values have been deleted.\n");
+
 	return 0;
 }
 
@@ -99,6 +101,7 @@ int set_value(int key, char *value1, float value2){
 	}
 
 	if(close_conection()==-1) return -1;
+	printf("Element with key %d inserted.\n", key);
 	return 0;
 }
 
@@ -127,7 +130,8 @@ int get_value(int key, char **value1, float *value2){
 		*value2=reply.value2;
 	}
 
-	if(close_conection()==-1) return -1;	
+	if(close_conection()==-1) return -1;
+	printf("Values of the element with key %d obtained.\n", key);	
 	return 0;
 }
 
@@ -151,6 +155,7 @@ int modify_value(int key, char *value1, float *value2){
 	if(reply.fcode==-1) return -1;
 
 	if(close_conection()==-1) return -1;
+	printf("Element with key %d modified.\n", key);
 	return 0;
 }
 
@@ -174,6 +179,7 @@ int delete_key(int key){
 	if(reply.fcode==-1) return -1;
 
 	if(close_conection()==-1) return -1;
+	printf("Element with key %d deleted.\n", key);
 	return 0;
 }
 
@@ -199,7 +205,7 @@ int num_items(){
 	result = reply.fcode;
 
 	if(close_conection()==-1) return -1;
-
+	printf("Number of itmes stored calculated.\n");
 	return result;
 }
 
