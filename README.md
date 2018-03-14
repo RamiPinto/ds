@@ -1,7 +1,5 @@
 # Distributed Systems
 
-## Exercise 1
-
 Universidad Carlos III de Madrid
 Bachelor's Degree in Computer Science and Engineering
 
@@ -11,7 +9,19 @@ Created on March 6th, 2018, 13:00 PM
 @version: 1.0
 
 
-# Specifications about the report
+## Content
+
+- Mandatory exercises: Exercise 1
+- Lab exercises: Sockets exercises
+- Project: Assignment 1
+
+ Exercise | Status | Deadline
+  --- | --- | ---
+  Exercise 1 | Finished | 11-03-2018
+  Socket exercise | Work in progress | Not Mandatory
+  Assignment 1 | Not started | 04-05-2018
+
+## Specifications about the report
 
 Report template created with pandoc markdown. In order to compile the report use command:
 
