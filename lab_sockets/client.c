@@ -28,7 +28,7 @@ int main(int argc, char **argv){
 	long conv = strtol(argv[1], &port_arg, 10);
 
 	if (errno != 0 || *port_arg != '\0' || conv > INT_MAX) {
-    		printf("[ERROR] Invalid argument.\n");
+		printf("[ERROR] Invalid argument.\n");
 		return -1;
 	}
 	else {
@@ -41,7 +41,7 @@ int main(int argc, char **argv){
 	memset(&server_addr, 0, sizeof(server_addr));
 	server_addr.sin_family = AF_INET;
 	inet_pton(AF_INET, server_name, &server_addr.sin_addr);
-  server_addr.sin_port = htons(port);
+	server_addr.sin_port = htons(port);
 
 	//Create socket
 	mysock = socket(PF_INET, SOCK_STREAM,0);
@@ -60,7 +60,7 @@ int main(int argc, char **argv){
 
 
 	//Communicate with server
-	while(errno!=-1){
+	while(1){
 
 		printf("Type to send a message to the server:\n");
 		if(readLine(0, request_buf, MAX_BUF)<0){
@@ -71,7 +71,7 @@ int main(int argc, char **argv){
 			printf("[ERROR] Error sending message\n");
 		}
 
-		if(recv_msg(mysock, reply_buf, MAX_BUF) < 0){
+		if(recv(mysock, reply_buf, MAX_BUF,0) < 0){
 			printf("[ERROR] Error receiving message\n");
 			break;
 		}

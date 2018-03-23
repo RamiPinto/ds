@@ -66,9 +66,9 @@ int main(int argc, char **argv){
     	c = 0;
 
 	//accept connection from an incoming client
-	while(0==0){
-			int client_sock;
-    	client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c);
+	while(1){
+		int client_sock;
+		client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c);
     	if (client_sock < 0){
         	perror("[ERROR]accept failed");
         	return 1;
@@ -77,39 +77,22 @@ int main(int argc, char **argv){
 
 			int n = 0;
 			int len = 0, maxlen = 100;
-			char client_message[MAX_BUF];
-			char * message = client_message;
+			char client_message[MAX_BUF] = { '\0' };
 
-			while ((n = recv(client_sock, message, maxlen, 0)) > 0) {
-				message += n;
+			while ((n = recv(client_sock, &client_message, maxlen, 0)) > 0) {
 				maxlen -= n;
 				len += n;
 
 				printf("received: '%s'\n", client_message);
 
 				// echo received content back
-				send(client_sock,client_message, len, 0);
+				if(send_msg(client_sock,client_message, len)<0){
+					printf("[ERROR] Error sending message");
+				}
+
+				*client_message = '\0';
 			}
-    	//Receive a message from client
-    	/*while( (read_size = recv_msg(client_sock , &client_message , 2*MAX_BUF)) > 0 ){
 
-				pbuffer += n;
-				maxlen -= n;
-				len += n;
-
-					//Send the message back to client
-        	send_msg(client_sock , client_message , strlen(client_message));
-    	}
-
-    	if(read_size == 0){
-        puts("Client disconnected");
-        fflush(stdout);
-    	}
-   	else if(read_size == -1){
-        	perror("recv failed");
-    	}
-
-			printf("Client message:\n%s\n",client_message);*/
 			close(client_sock);
 
 	}

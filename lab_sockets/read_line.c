@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdio.h>
 #include <errno.h>
 #include "read_line.h"
 
@@ -6,14 +7,14 @@ int send_msg(int socket, char *message, int length)
 {
 	int r;
 	int l = length;
-		
 
-	do {	
+
+	do {
 		r = write(socket, message, l);
 		l = l -r;
 		message = message + r;
 	} while ((l>0) && (r>=0));
-	
+
 	if (r < 0)
 		return (-1);   /* fail */
 	else
@@ -24,14 +25,14 @@ int recv_msg(int socket, char *message, int length)
 {
 	int r;
 	int l = length;
-		
 
-	do {	
+
+	do {
 		r = read(socket, message, l);
 		l = l -r ;
 		message = message + r;
 	} while ((l>0) && (r>=0));
-	
+
 	if (r < 0)
 		return (-1);   /* fail */
 	else
@@ -48,18 +49,18 @@ ssize_t readLine(int fd, void *buffer, size_t n)
 	char ch;
 
 
-	if (n <= 0 || buffer == NULL) { 
+	if (n <= 0 || buffer == NULL) {
 		errno = EINVAL;
-		return -1; 
+		return -1;
 	}
 
 	buf = buffer;
 	totRead = 0;
-	
+
 	for (;;) {
         	numRead = read(fd, &ch, 1);	/* read a byte */
 
-        	if (numRead == -1) {	
+        	if (numRead == -1) {
             		if (errno == EINTR)	/* interrupted -> restart read() */
                 		continue;
             	else
@@ -76,11 +77,11 @@ ssize_t readLine(int fd, void *buffer, size_t n)
                 		break;
             		if (totRead < n - 1) {		/* discard > (n-1) bytes */
 				totRead++;
-				*buf++ = ch; 
+				*buf++ = ch;
 			}
-		} 
+		}
 	}
-	
+
 	*buf = '\0';
     	return totRead;
 }
