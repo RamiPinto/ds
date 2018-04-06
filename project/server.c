@@ -6,60 +6,62 @@
 #include <sys/socket.h> //sockets
 #include <sys/types.h>
 #include <arpa/inet.h> //inet addr
-#include "read_line.h"
 
-#define MAX_BUF 1024
+#define MAX_BUF 256
 
 int main(int argc, char **argv){
 
 	char * port_arg;
+	char * pflag = "-p";
 	int socket_desc , c, port;
-	struct sockaddr_in server , client;
+	struct sockaddr_in s_server , s_client;
 
 	//Check arguments
-	if(argc!=2){
-		printf("[ERROR] Incorrect number of arguments.\n");
+	if(argc!=3){
+		printf("[ERROR] Incorrect number of arguments. Try ./server -p <port>\n");
 		return -1;
 	}
 
-	long conv = strtol(argv[1], &port_arg, 10);
+	if (strcmp(argv[1], pflag) != 0){
+		printf("[ERROR] Unknown option %s. Try ./server -p <port>\n", argv[1]);
+		return -1;
+	}
+
+	long conv = strtol(argv[2], &port_arg, 10);
 
 	if (errno != 0 || *port_arg != '\0' || conv > INT_MAX) {
 		printf("[ERROR] Invalid argument.\n");
 		return -1;
 	}
-	else {
-		// No error
+	else {	// No error
 		port = conv;
-		printf("%d\n", port);
+		//printf("%d\n", port);
 	}
 
 	//Socket used for server configuration
-	memset(&server, 0, sizeof(server));
-	server.sin_family = AF_INET;
-	server.sin_port = htons(port);
-	server.sin_addr.s_addr = htonl(INADDR_ANY);
+	memset(&s_server, 0, sizeof(s_server));
+	s_server.sin_family = AF_INET;
+	s_server.sin_port = htons(port);
+	s_server.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	//Create socket
-	socket_desc = socket(PF_INET , SOCK_STREAM , 0);
-	if (socket_desc == -1){
-		printf("[ERROR]Could not create socket");
-		return 1;
+	if ((socket_desc = socket(PF_INET , SOCK_STREAM , 0)) == -1){
+		printf("[ERROR] Could not create socket");
+		return -1;
 	}
 	printf("Socket created.\n");
 
-
 	//Bind
-	if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0){
-		perror("bind failed. Error");
-		return 1;
+	if(bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0){
+		perror("[Error] bind failed");
+		return -1;
 	}
 	printf("Bind done.\n");
 
 	//Listen
 	if(listen(socket_desc , 3)<0){
 		printf("[Error] Could not open socket for listening.\n");
-		return 1;
+		return -1;
 	}
 
 	//Accept and incoming connection

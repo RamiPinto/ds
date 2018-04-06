@@ -18,8 +18,8 @@ Created on March 6th, 2018, 13:00 PM
  Exercise | Status | Deadline
  --- | --- | ---
  Exercise 1 | Finished | 11-03-2018
- Socket exercise | Work in progress | Not Mandatory
- Assignment 1 | Not started | 04-05-2018
+ Socket exercise | Sequential version completed | Not Mandatory
+ Assignment 1 | Work in progress | 04-05-2018
 
 ## Specifications about the report
 
