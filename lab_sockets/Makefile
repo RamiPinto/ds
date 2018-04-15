@@ -1,4 +1,4 @@
-BIN_FILES  = test client server
+BIN_FILES  = server
 
 CC = gcc
 
@@ -13,11 +13,6 @@ all: CFLAGS=$(CCGLAGS)
 all: $(BIN_FILES)
 .PHONY : all
 
-test: test.o read_line.o
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
-
-client: client.o read_line.o
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 server: server.o read_line.o
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
