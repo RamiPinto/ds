@@ -85,10 +85,11 @@ int main(int argc, char **argv){
 			len += n;
 
 			printf("received: '%s'\n", client_message);
-
+			int32_t one = htonl(1);
+			char *data = (char*) &one;
 			// echo received content back
-			if(send_msg(client_sock,client_message, len)<0){
-				printf("[ERROR] Error sending message");
+			if(write(client_sock, data, sizeof(int))<=0){
+				printf("[ERROR] Error sending message\n");
 			}
 
 			*client_message = '\0';

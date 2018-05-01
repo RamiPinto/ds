@@ -33,37 +33,38 @@ class client {
 	 */
 	static RC register(String user)
 	{
-		// 5.1.1 Connects to the server, according to the IP and port passed in the command line to the program.
 		try{
 			// 5.1.1 Connects to the server, according to the IP and port passed in the command line to the program.
       Socket sc = new Socket(_server,_port);
 			// 5.1.2 The string ”REGISTER” is sent indicating the operation
       OutputStream ostream = sc.getOutputStream();
       ObjectOutput s = new ObjectOutputStream(ostream);
-			String message = "REGISTER";
+			String message = "REGISTER"; // TO DO: Add EOS?
 			s.writeObject(message);
 			s.flush();
 			// 5.1.3 A string of characters is sent with the name of the user to be registered.
-			s.writeObject(user);
+			s.writeObject(user); // TO DO: Add EOS?
 			s.flush();
 			// 5.1.4 It receives from the server a byte that encodes the result of the operation:
 			// 0 in case of success, 1 if the user is previously registered, 2 in any other case.
       DataInputStream istream = new DataInputStream(sc.getInputStream());
-			int result;
-      result = istream.readInt();
+			int result = istream.readInt();
 			// 5.1.5 Close the connection
       sc.close();
 			// 5.1.4 Return:
 			switch (result){
+				case 0: // 0: Register succesful
+					System.out.print("REGISTER OK OK \n");
+					return RC.OK;
 				case 1:  // 1: The user was previously registered
 					System.out.print("USERNAME IN USE \n");
 					return RC.ERROR;
 				case 2:  // 2: There was some other error
 					System.out.print("REGISTER FAIL \n");
 					return RC.ERROR;
-				default: // 0: Registration succesful
-				System.out.print("REGISTER OK \n");
-				return RC.OK;
+				default: // If the server returns any other thing
+					System.out.print("[ERROR] UNKNOWN SERVER MESSAGE \n");
+					return RC.ERROR;
 			}
     }
     catch (Exception e){
@@ -82,9 +83,92 @@ class client {
 	 */
 	static RC unregister(String user)
 	{
-		// Write your code here
+		try{
+			// 5.2.1 Connects to the server, according to the IP and port passed in the command line to the program.
+			Socket sc = new Socket(_server,_port);
+			// 5.2.2 The string ”UNREGISTER” is sent indicating the operation
+			OutputStream ostream = sc.getOutputStream();
+			ObjectOutput s = new ObjectOutputStream(ostream);
+			String message = "UNREGISTER"; // TO DO: Add EOS?
+			s.writeObject(message);
+			s.flush();
+			// 5.2.3 A string of characters is sent with the name of the user to be registered.
+			s.writeObject(user); // TO DO: Add EOS?
+			s.flush();
+			// 5.2.4 It receives from the server a byte that encodes the result of the operation:
+			// 0 in case of success, 1 if the user is previously registered, 2 in any other case.
+			DataInputStream istream = new DataInputStream(sc.getInputStream());
+			int result = istream.readInt();;
+			// 5.2.5 Close the connection
+			sc.close();
+			// 5.2.4 Return:
+			switch (result){
+				case 0: // 0: Unregistration succesful
+					System.out.print("UNREGISTER OK \n");
+					return RC.OK;
+				case 1:  // 1: The user wasn't previously registered
+					System.out.print("USER DOES NOT EXIST \n");
+					return RC.ERROR;
+				case 2:  // 2: There was some other error
+					System.out.print("UNREGISTER FAIL \n");
+					return RC.ERROR;
+				default: // If the server returns any other thing
+					System.out.print("[ERROR] UNKNOWN SERVER MESSAGE \n");
+					return RC.ERROR;
+			}
+		}
+		catch (Exception e){
+			System.err.println("[ERROR] Unable to stablish connection with the specified host");
+			e.printStackTrace();
+		}
 		return RC.ERROR;
 	}
+
+	/**
+ * @return Opened socket if succesful
+ * @return Throw exception if no free port was found
+ */
+	static ServerSocket findSocket() throws Exception{
+		for (int port = 1025; port < 65535 ; port++) { //Port must be in the range 1024 < port < 65535
+			 try {
+					 return new ServerSocket(port);
+			 }
+			 catch (Exception ex) {
+					 continue; // try next port
+			 }
+	 	}
+		throw new IOException("[ERROR] Unable to find a free port");
+	}
+
+	/**
+ * Parallel thread: listens.
+ */
+
+	public static class listener implements Runnable{
+
+		@Override
+		public void run() {
+			System.out.println("Estoy en la mierda");
+		}
+
+		public listener (ServerSocket serverAddr){
+			Socket sc = null;
+			String message;
+			while(true){
+				try{
+					// Waiting for connection
+					sc = serverAddr.accept();
+					InputStream istream = sc.getInputStream();
+					ObjectInput in 			= new ObjectInputStream(istream);
+					System.out.println("Estoy en la mierda");
+					// TO DO: MESSAGE RECEPTION
+				}
+				catch(Exception e){
+				}
+			}
+		}
+	}
+
 
     /**
 	 * @param user - User name to connect to the system
@@ -93,9 +177,79 @@ class client {
 	 * @return USER_ERROR if the user does not exist or if it is already connected
 	 * @return ERROR if another error occurred
 	 */
-	static RC connect(String user)
-	{
-		// Write your code here
+	static RC connect(String user){
+
+		// Internally the client will search for a valid free port
+			// 2 Options
+
+			// Option 1: We don't mind the port used
+
+		/*try{
+			ServerSocket s = new ServerSocket(0);
+		}
+		catch (Exception e){
+			System.err.println("[ERROR] Error while creating the socket");
+		}*/
+
+
+		try{
+			// Option 2: We want the port to be within a range
+			System.out.println("Buscando client socket");
+			ServerSocket client_socket = findSocket();
+			System.out.println("Client socket encontrado \n Entrando al thread");
+			// Create a thread that will be in charge of listening (on the IP and port selected) and attend to the messages sent by other users from the server.
+			Runnable client_thread = new listener(client_socket);
+			new Thread(client_thread).start();
+
+			// 5.3.1 Connects to the server, according to the IP and port passed in the command line to the program.
+			System.out.println("A punto de abrir esta mierda");
+			Socket sc = new Socket(_server,_port);
+			System.out.println("Ya he abierto esta mierda");
+			// 5.3.2 The string ”CONNECT” is sent indicating the operation.
+			OutputStream ostream = sc.getOutputStream();
+			ObjectOutput s = new ObjectOutputStream(ostream);
+			String message = "CONNECT"; // TO DO: Add EOS?
+			s.writeObject(message);
+			s.flush();
+
+			// 5.3.3 A string is sent with the name of the user.
+			s.writeObject(user); // TO DO: Add EOS?
+			s.flush();
+
+			// 5.3.4 We send a string of characters encoding the client’s listening port number.
+			String port = String.valueOf(client_socket.getLocalPort());
+			s.writeObject(port); // TO DO: Add EOS?
+			s.flush();
+
+			// 5.3.5 It receives a byte from the server that encodes the result of the operation.
+			DataInputStream istream = new DataInputStream(sc.getInputStream());
+			int result = istream.readInt();
+
+		  // 5.3.6 Close the connection.
+			sc.close();
+
+			// 5.3.5 Return
+			switch (result){
+				case 0: // 0: Connection succesful
+					System.out.print("CONNECT OK \n");
+					return RC.OK;
+				case 1:  // 1: The user wasn't previously registered
+					System.out.print("CONNECT FAIL, USER DOES NOT EXIST \n");
+					return RC.ERROR;
+				case 2:  // 2: The client is already connected
+					System.out.print("USER ALREADY CONNECTED \n");
+					return RC.ERROR;
+				case 3:  // 3: There was some other error
+					System.out.print("CONNECT FAIL \n");
+					return RC.ERROR;
+				default: // If the server returns any other thing
+					System.out.print("[ERROR] UNKNOWN SERVER MESSAGE \n");
+					return RC.ERROR;
+			}
+		}
+		catch(Exception e){
+			System.err.println("[ERROR] No available ports");
+		}
 		return RC.ERROR;
 	}
 
