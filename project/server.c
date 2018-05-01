@@ -6,15 +6,29 @@
 #include <sys/socket.h> //sockets
 #include <sys/types.h>
 #include <arpa/inet.h> //inet addr
+#include <pthread.h> //threads
+#include <unistd.h> // for close
+#include "services.h"
 
-#define MAX_BUF 256
+pthread_mutex_t mutex_msg;
+int busy = TRUE;  //TRUE =1
+pthread_cond_t cond_msg;
+
+user_t *usr_list;
+
+void *connection_handler(void *);
+ssize_t read_line(int fd, void *buffer, int n);
 
 int main(int argc, char **argv){
 
 	char * port_arg;
 	char * pflag = "-p";
-	int socket_desc , c, port;
+	int socket_desc , c, port, client_sock;
 	struct sockaddr_in s_server , s_client;
+
+	pthread_t thid;
+	pthread_attr_t t_attr;  /*thread atributes*/
+
 
 	//Check arguments
 	if(argc!=3){
@@ -33,10 +47,8 @@ int main(int argc, char **argv){
 		printf("[ERROR] Invalid argument.\n");
 		return -1;
 	}
-	else {	// No error
-		port = conv;
-		//printf("%d\n", port);
-	}
+
+	port = conv;
 
 	//Socket used for server configuration
 	memset(&s_server, 0, sizeof(s_server));
@@ -52,7 +64,7 @@ int main(int argc, char **argv){
 	printf("Socket created.\n");
 
 	//Bind
-	if(bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0){
+	if(bind(socket_desc,(struct sockaddr *)&s_server , sizeof(s_server)) < 0){
 		perror("[Error] bind failed");
 		return -1;
 	}
@@ -64,42 +76,130 @@ int main(int argc, char **argv){
 		return -1;
 	}
 
-	//Accept and incoming connection
-	printf("Waiting for incoming connections...\n");
-	c = 0;
+	c = sizeof(struct sockaddr_in);
 
-	//accept connection from an incoming client
+	pthread_mutex_init(&mutex_msg, NULL);
+	pthread_cond_init(&cond_msg, NULL);
+	pthread_attr_init(&t_attr);
+
+	/* thread atributes */
+	pthread_attr_setdetachstate(&t_attr, PTHREAD_CREATE_DETACHED);
+
+
+	//Accept connection from an incoming client. When a client is accepted, a thread is created for him, while the parent branch keeps listening
+	//for new conections
 	while(1){
-		int client_sock;
-		client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c);
+
+		fprintf(stderr, "%s", "s> ");
+
+		client_sock = accept(socket_desc, (struct sockaddr *)&s_client, (socklen_t*)&c);
 		if (client_sock < 0){
 			perror("[ERROR]accept failed");
 			return 1;
 		}
-		printf("Connection accepted.\nClient connected with ip address: %s\n",inet_ntoa(client.sin_addr));
+		printf("Connection accepted.\nClient connected with ip address: %s\n",inet_ntoa(s_client.sin_addr));
 
-		int n = 0;
-		int len = 0, maxlen = 100;
-		char client_message[MAX_BUF] = { '\0' };
+		// Here we create a thread to handle the connection with the client. Meanwhile, the parent process
+		// will still listening
 
-		while ((n = recv(client_sock, &client_message, maxlen, 0)) > 0) {
-			maxlen -= n;
-			len += n;
-
-			printf("received: '%s'\n", client_message);
-
-			// echo received content back
-			if(send_msg(client_sock,client_message, len)<0){
-				printf("[ERROR] Error sending message");
-			}
-
-			*client_message = '\0';
+		if( pthread_create( &thid , &t_attr ,  connection_handler , (void*) &client_sock) < 0){
+			perror("Could not create thread");
+			return 1;
 		}
 
-		close(client_sock);
+		/*Critical section - wait for thread to manage request*/
+		pthread_mutex_lock(&mutex_msg);
+		while (busy == TRUE){
+			pthread_cond_wait(&cond_msg, &mutex_msg);
+		}
+		pthread_mutex_unlock(&mutex_msg);
+		busy = TRUE;
 
-	}
+
+		//Now join the thread , so that we dont terminate before the thread
+		//pthread_join( thid , NULL);
+
+	} // End While
+
+
 
 	close(socket_desc);
 	return 0;
+}
+
+void *connection_handler(void *socket_desc)
+{
+	int s_local;
+	char service_msg[MAX_BUF] = { '\0' };
+	char user_msg[MAX_BUF] = { '\0' };
+	//char port_msg[MAX_BUF] = { '\0' };
+
+	pthread_mutex_lock(&mutex_msg);
+
+	//Get the socket descriptor
+	s_local = *(int*)socket_desc;
+	busy = FALSE;
+
+	pthread_cond_signal(&cond_msg);
+	pthread_mutex_unlock(&mutex_msg);
+
+	//Receive a message from client
+	if (read_line(s_local, service_msg, MAX_BUF) < 0) { // Requested operation.
+		printf("[ERROR] Cannot read client request\n"); // Error.
+		bzero(service_msg, MAX_BUF); // Clean buffer.
+	}
+
+	if (read_line(s_local, user_msg, MAX_BUF) < 0) { // Requested operation.
+		printf("[ERROR] Cannot read client request\n"); // Error.
+		bzero(service_msg, MAX_BUF); // Clean buffer.
+	}
+
+	printf("Received message: %s %s\n", service_msg, user_msg);
+	int32_t one = htonl(1);
+	char *data = (char*) &one;
+	//Send the message back to client
+	if(write(s_local , data, sizeof(int))<0){
+		printf("[ERROR] Error sending reply\n");
+	}
+
+		*service_msg = '\0';
+
+
+	close(s_local);
+	pthread_exit(NULL);
+	return 0;
+}
+
+
+ssize_t read_line(int fd, void *buffer, int n) {
+	int last_read;
+	int total_read;
+	char *buff;
+	char c;
+
+	if (n < 0 || !buffer) {
+		errno = EINVAL;
+		return -1;
+	}
+
+	buff = buffer;
+	bzero(buff, strlen(buff));
+
+	// We try to fill the buffer until (n - 1) to add in the end '\0'.
+	for (total_read = 0; total_read < (n - 1); ++total_read) {
+		last_read = read(fd, &c, 1); // Read 1 byte.
+
+		if (last_read == -1) { // Checking read errors.
+			if (errno == EINTR) continue; // interrupted -> restart read().
+			else return -1;
+		} else if (last_read == 0) { // We have reached EOF.
+			break;
+		} else {
+			if (c == '\n' || c == '\0') break;
+			*buff++ = c;
+		}
+	}
+
+	*buff = '\0'; // Set the delimiter.
+	return total_read;
 }
