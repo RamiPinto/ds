@@ -162,44 +162,11 @@ void *connection_handler(void *socket_desc)
 		printf("[ERROR] Error sending reply\n");
 	}
 
-		*service_msg = '\0';
+	*service_msg = '\0';
+	*user_msg = '\0';
 
 
 	close(s_local);
 	pthread_exit(NULL);
 	return 0;
-}
-
-
-ssize_t read_line(int fd, void *buffer, int n) {
-	int last_read;
-	int total_read;
-	char *buff;
-	char c;
-
-	if (n < 0 || !buffer) {
-		errno = EINVAL;
-		return -1;
-	}
-
-	buff = buffer;
-	bzero(buff, strlen(buff));
-
-	// We try to fill the buffer until (n - 1) to add in the end '\0'.
-	for (total_read = 0; total_read < (n - 1); ++total_read) {
-		last_read = read(fd, &c, 1); // Read 1 byte.
-
-		if (last_read == -1) { // Checking read errors.
-			if (errno == EINTR) continue; // interrupted -> restart read().
-			else return -1;
-		} else if (last_read == 0) { // We have reached EOF.
-			break;
-		} else {
-			if (c == '\n' || c == '\0') break;
-			*buff++ = c;
-		}
-	}
-
-	*buff = '\0'; // Set the delimiter.
-	return total_read;
 }

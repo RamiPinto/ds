@@ -21,23 +21,35 @@ typedef struct message{
 typedef struct user{
 	char *usr_name;
 	int status;	//0 not conected, 1 connected
-	struct in_addr ip; // IP to send messages.
-	int port; // Port to send messages.
+	//struct in_addr ip; // IP to send messages.
+	//int port; // Port to send messages.
+	int socket;
 	msg_t *msg;
 	int last_msg;
 	struct user *next_usr;
 } user_t;
 
 
-int init_usr(user_t *head);	//Restore user list
-int register_usr(user_t *head, char *name, struct in_addr ip, int port);
-int remove_usr(user_t *head, char *name);
-user_t get_user(user_t *head, char *name);
 int userExists(user_t *head, char *name);
+int register_usr(user_t **head_ref, char *name);
+int remove_usr(user_t **head_ref, char *name);
+int connect_usr(user_t *head, char *name, int socket);
+int disconnect_usr(user_t *head, char *name);
+//user_t *get_user(user_t *head, char *name);
 
-int init_msg(user_t *head); //Restore message list
-int add_msg(user_t *head, char *sender, char *content);
-int pop_msg(user_t *head);
+int send_pending_msg(user_t *head, char *receiver);
+int send_msg(user_t *head, int msg_id, char *sender, char *receiver, char *content);
+
+/*DEBUGGING FUNCTIONS*/
+void printUsers(user_t *head);
+void printMessages(user_t *head, char *name);
+//int init_msg(user_t *head); //Restore message list
+//int init_usr(user_t *head);	//Restore user list
+
+/*AUXILIARY FUNCTIONS*/
+ssize_t write_line(int fd, void *buffer, size_t n);
+ssize_t read_line(int fd, void *buffer, int n);
+
 
 
 #endif
