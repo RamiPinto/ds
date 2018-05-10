@@ -10,6 +10,14 @@
 #define ON 1
 #define OFF 0
 
+/*SWITCH KEYWORDS*/
+#define ERROR -1
+#define REGISTER 1
+#define UNREGISTER 2
+#define CONNECT 3
+#define DISCONNECT 4
+#define SEND 5
+
 
 typedef struct message{
 	int id;
@@ -19,7 +27,7 @@ typedef struct message{
 } msg_t;
 
 typedef struct user{
-	char *usr_name;
+	char usr_name[MAX_BUF];
 	int status;	//0 not conected, 1 connected
 	//struct in_addr ip; // IP to send messages.
 	//int port; // Port to send messages.
@@ -29,6 +37,10 @@ typedef struct user{
 	struct user *next_usr;
 } user_t;
 
+typedef struct {
+	char *key;
+	int val;
+} opkey_t;
 
 int userExists(user_t *head, char *name);
 int register_usr(user_t **head_ref, char *name);
@@ -49,6 +61,7 @@ void printMessages(user_t *head, char *name);
 /*AUXILIARY FUNCTIONS*/
 ssize_t write_line(int fd, void *buffer, size_t n);
 ssize_t read_line(int fd, void *buffer, int n);
+int keyfromstring(char *key);
 
 
 

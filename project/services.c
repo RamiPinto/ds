@@ -16,7 +16,7 @@ int userExists(user_t *head, char *name)
 	user_t *temp_user = head;
 
 	while(temp_user != NULL){
-		if(strcmp(temp_user->usr_name, name) == 0){
+		if(strcmp((char *)temp_user->usr_name, name) == 0){
 			return TRUE;
 		}
 		temp_user = temp_user->next_usr;
@@ -39,7 +39,11 @@ int register_usr(user_t **head_ref, char *name)
 		user_t *new_user = (user_t *) malloc(sizeof(user_t));
 
 		//Fill data
-		new_user->usr_name = name;
+		if(strcpy((char *) new_user->usr_name, name)<0){
+			printf("ERROR copying name");
+			return 2;
+		}
+
 		new_user->status = OFF;
 		new_user->msg = NULL;
 		new_user->last_msg = 0;
@@ -71,7 +75,7 @@ int remove_usr(user_t **head_ref, char *name)
 	if(userExists(*head_ref, name) == TRUE){
 
 		//If the first node is the user to be removed
-		if(temp_user != NULL && strcmp(temp_user->usr_name,name) == 0){
+		if(temp_user != NULL && strcmp((char *)temp_user->usr_name,name) == 0){
 			*head_ref = temp_user->next_usr;
 			free(temp_user);
 			printf("UNREGISTER %s OK\n", name);
@@ -79,7 +83,7 @@ int remove_usr(user_t **head_ref, char *name)
 		}
 
 		//Search user
-		while(temp_user != NULL && strcmp(temp_user->usr_name,name) != 0){
+		while(temp_user != NULL && strcmp((char *)temp_user->usr_name,name) != 0){
 			prev_user = temp_user;
 			temp_user = temp_user->next_usr;
 		}
@@ -108,7 +112,7 @@ int connect_usr(user_t *head, char *name, int socket)
 
 		while(temp_user != NULL){
 
-			if(strcmp(temp_user->usr_name, name) == 0){
+			if(strcmp((char *)temp_user->usr_name, name) == 0){
 
 				if(temp_user->status == OFF){	//User not connected
 					temp_user->status = ON;
@@ -147,7 +151,7 @@ int disconnect_usr(user_t *head, char *name)
 
 		while(temp_user != NULL){
 
-			if(strcmp(temp_user->usr_name, name) == 0){
+			if(strcmp((char *)temp_user->usr_name, name) == 0){
 
 				if(temp_user->status == ON){	//User connected
 					temp_user->status = OFF;
@@ -193,7 +197,7 @@ int send_msg(user_t *head, int msg_id, char *sender, char *receiver, char *conte
 
 		while(temp_user != NULL){
 
-			if(strcmp(temp_user->usr_name, receiver) == 0){ //Search receiver
+			if(strcmp((char *)temp_user->usr_name, receiver) == 0){ //Search receiver
 				//Allocate memory for new message
 				msg_t *head_msg = temp_user->msg;
 				new_msg = (msg_t *) malloc(sizeof(msg_t));
@@ -256,7 +260,7 @@ int send_pending_msg(user_t *head, char *receiver)
 
 	//Search receiver in list
 	while(temp_user != NULL && temp_user->status == ON){
-		if(strcmp(temp_user->usr_name, receiver) == 0){
+		if(strcmp((char *)temp_user->usr_name, receiver) == 0){
 			temp_msg = temp_user->msg;
 			mysock = temp_user->socket;
 
@@ -298,10 +302,10 @@ void printUsers(user_t *head){
 	int i;
 
 	if(head != NULL){
-		printf("**LIST OF USERS**\n");
+		printf("\n**LIST OF USERS**\n");
 
 		for(i=0;temp_user!=NULL;i++){
-			printf("%d. User %s - Status %d", i, temp_user->usr_name, temp_user->status);
+			printf("%d. User %s - Status %d\n", i, (char *)temp_user->usr_name, temp_user->status);
 			temp_user = temp_user->next_usr;
 		}
 	}
@@ -319,7 +323,7 @@ void printMessages(user_t *head, char *name){
 
 	while(temp_user != NULL){
 
-		if(strcmp(temp_user->usr_name, name) == 0){
+		if(strcmp((char *)temp_user->usr_name, name) == 0){
 			temp_msg = temp_user->msg;
 			printf("\n**LIST OF MESSAGES OF %s**\n", name);
 
@@ -404,6 +408,23 @@ ssize_t write_line(int fd, void *buffer, size_t n) {
 	else return 0; // Write done.
 }
 
+/*SWITCH KEYWORDS*/
+static opkey_t lookuptable[5] = {
+	{ "REGISTER", REGISTER }, { "UNREGISTER", UNREGISTER }, { "CONNECT", CONNECT }, { "DISCONNECT", DISCONNECT }, { "SEND", SEND }
+};
+
+int keyfromstring(char *key)
+{
+	int i;
+	for (i=0; i < 5; i++) {
+		opkey_t *sym = (opkey_t *)&lookuptable[i] ;
+		printf("Looking at key %s\n",sym->key);
+		if (strcmp(sym->key, (char *)key) == 0){
+			return sym->val;
+		}
+	}
+	return ERROR;
+}
 /*
 reply = htonl(1);
 reply_msg = (char*) &reply;

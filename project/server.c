@@ -10,6 +10,7 @@
 #include <unistd.h> // for close
 #include "services.h"
 
+
 pthread_mutex_t mutex_msg;
 int busy = TRUE;  //TRUE =1
 pthread_cond_t cond_msg;
@@ -116,8 +117,8 @@ int main(int argc, char **argv){
 		busy = TRUE;
 
 
-		//Now join the thread , so that we dont terminate before the thread
-		//pthread_join( thid , NULL);
+		//TODO: check if needed: Now join the thread , so that we dont terminate before the thread
+		pthread_join( thid , NULL);
 
 	} // End While
 
@@ -130,6 +131,9 @@ int main(int argc, char **argv){
 void *connection_handler(void *socket_desc)
 {
 	int s_local;
+	int32_t result;
+	char * reply;
+	//char *local_usrname = calloc(1,MAX_BUF);
 	char service_msg[MAX_BUF] = { '\0' };
 	char user_msg[MAX_BUF] = { '\0' };
 	//char port_msg[MAX_BUF] = { '\0' };
@@ -138,10 +142,10 @@ void *connection_handler(void *socket_desc)
 
 	//Get the socket descriptor
 	s_local = *(int*)socket_desc;
-	busy = FALSE;
 
-	pthread_cond_signal(&cond_msg);
-	pthread_mutex_unlock(&mutex_msg);
+	//TODO: Check where unlock mutex
+
+	printUsers(usr_list);
 
 	//Receive a message from client
 	if (read_line(s_local, service_msg, MAX_BUF) < 0) { // Requested operation.
@@ -151,9 +155,50 @@ void *connection_handler(void *socket_desc)
 
 	if (read_line(s_local, user_msg, MAX_BUF) < 0) { // Requested operation.
 		printf("[ERROR] Cannot read client request\n"); // Error.
-		bzero(service_msg, MAX_BUF); // Clean buffer.
+		bzero(user_msg, MAX_BUF); // Clean buffer.
+	}
+	/*if(strcpy(local_usrname, (char *)user_msg)<0){
+		printf("ERROR copying name");
+		free(local_usrname);
+	}*/
+
+	printf("Received message: %s %s (opkey=%d)\n", service_msg, user_msg,keyfromstring(service_msg));
+
+	switch(keyfromstring(service_msg)){
+		case REGISTER:
+			result = htonl(register_usr(&usr_list, user_msg));
+		break;
+		case UNREGISTER:
+			result = htonl(remove_usr(&usr_list, user_msg));
+		break;
+		case CONNECT:
+			result = htonl(connect_usr(usr_list, user_msg, s_local));
+		break;
+		case DISCONNECT:
+			result = htonl(disconnect_usr(usr_list, user_msg));
+		break;
+		case SEND:
+
+		break;
+		case ERROR:
+			printf("[ERROR] Cannot get service code\n");
+		break;
+		default:
+			printf("[ERROR] Error executing requested service\n");
+		break;
 	}
 
+
+	//Send service result back to client
+	printUsers(usr_list);
+	reply = (char*) &result;
+	if(write(s_local , reply, sizeof(int))<0){
+		printf("[ERROR] Error sending reply\n");
+	}
+
+	//free(local_usrname);
+
+	/*
 	printf("Received message: %s %s\n", service_msg, user_msg);
 	int32_t one = htonl(1);
 	char *data = (char*) &one;
@@ -161,12 +206,18 @@ void *connection_handler(void *socket_desc)
 	if(write(s_local , data, sizeof(int))<0){
 		printf("[ERROR] Error sending reply\n");
 	}
+	*/
 
 	*service_msg = '\0';
 	*user_msg = '\0';
 
 
 	close(s_local);
+	busy = FALSE;
+
+	pthread_cond_signal(&cond_msg);
+	pthread_mutex_unlock(&mutex_msg);
+
 	pthread_exit(NULL);
 	return 0;
 }
