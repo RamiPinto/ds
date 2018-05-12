@@ -16,9 +16,9 @@ int busy = TRUE;  //TRUE =1
 pthread_cond_t cond_msg;
 
 user_t *usr_list;
+unsigned int msg_id = 0;
 
 void *connection_handler(void *);
-ssize_t read_line(int fd, void *buffer, int n);
 
 int main(int argc, char **argv){
 
@@ -26,6 +26,7 @@ int main(int argc, char **argv){
 	char * pflag = "-p";
 	int socket_desc , c, port, client_sock;
 	struct sockaddr_in s_server , s_client;
+	targs_t *myargs; //For passing arguments to the thread
 
 	pthread_t thid;
 	pthread_attr_t t_attr;  /*thread atributes*/
@@ -100,10 +101,15 @@ int main(int argc, char **argv){
 		}
 		printf("Connection accepted.\nClient connected with ip address: %s\n",inet_ntoa(s_client.sin_addr));
 
-		// Here we create a thread to handle the connection with the client. Meanwhile, the parent process
-		// will still listening
+		// Here we create a thread to handle the connection with the client. Meanwhile, the parent process will still listening
 
-		if( pthread_create( &thid , &t_attr ,  connection_handler , (void*) &client_sock) < 0){
+		//Fill arguments
+		myargs = malloc(sizeof(targs_t));
+		myargs->client_sdesc = client_sock;
+		myargs->client_saddr = s_client;
+
+		//Create thread
+		if( pthread_create( &thid , &t_attr ,  connection_handler , (void*) myargs) < 0){
 			perror("Could not create thread");
 			return 1;
 		}
@@ -128,20 +134,24 @@ int main(int argc, char **argv){
 	return 0;
 }
 
-void *connection_handler(void *socket_desc)
+void *connection_handler(void *myargs)
 {
-	int s_local;
-	int32_t result;
-	char * reply;
-	//char *local_usrname = calloc(1,MAX_BUF);
-	char service_msg[MAX_BUF] = { '\0' };
-	char user_msg[MAX_BUF] = { '\0' };
-	//char port_msg[MAX_BUF] = { '\0' };
+	targs_t *temp_args = (targs_t *) myargs;
+	int s_local, temp_result;
+	struct sockaddr_in saddr_local;
+	int32_t result = 2;
+	char * reply, *sender_name;
+	char service_msg[MAX_BUF] = { '\0' }, user_msg[MAX_BUF] = { '\0' }, content_msg[MAX_BUF] = { '\0' };
+
+	memset(&saddr_local, 0, sizeof(saddr_local));
 
 	pthread_mutex_lock(&mutex_msg);
 
 	//Get the socket descriptor
-	s_local = *(int*)socket_desc;
+	s_local = (int) temp_args->client_sdesc;
+	saddr_local = (struct sockaddr_in) temp_args->client_saddr;
+
+	free(myargs);
 
 	//TODO: Check where unlock mutex
 
@@ -157,10 +167,6 @@ void *connection_handler(void *socket_desc)
 		printf("[ERROR] Cannot read client request\n"); // Error.
 		bzero(user_msg, MAX_BUF); // Clean buffer.
 	}
-	/*if(strcpy(local_usrname, (char *)user_msg)<0){
-		printf("ERROR copying name");
-		free(local_usrname);
-	}*/
 
 	printf("Received message: %s %s (opkey=%d)\n", service_msg, user_msg,keyfromstring(service_msg));
 
@@ -168,48 +174,70 @@ void *connection_handler(void *socket_desc)
 		case REGISTER:
 			result = htonl(register_usr(&usr_list, user_msg));
 		break;
+
 		case UNREGISTER:
 			result = htonl(remove_usr(&usr_list, user_msg));
 		break;
+
 		case CONNECT:
-			result = htonl(connect_usr(usr_list, user_msg, s_local));
+			result = htonl(connect_usr(usr_list, user_msg, saddr_local));
+
 		break;
+
 		case DISCONNECT:
 			result = htonl(disconnect_usr(usr_list, user_msg));
 		break;
-		case SEND:
 
+		case SEND:
+			//Get content of the message
+			if (read_line(s_local, content_msg, MAX_BUF) < 0) { // Requested operation.
+				printf("[ERROR] Cannot read client request\n"); // Error.
+				bzero(content_msg, MAX_BUF); // Clean buffer.
+			}
+
+			//Get senders name by ip
+			sender_name = searchUserNameByIp(usr_list, saddr_local);
+			if(sender_name == NULL){
+				printf("[ERROR] Unable to get senders name. Cannot send message.\n");
+				result = 2;
+			}
+			else{
+				//Get message id and store the message
+				msg_id = (msg_id + 1)%UINT_MAX;
+				temp_result = store_msg(usr_list, msg_id, sender_name, user_msg, content_msg);
+
+				if(temp_result != 0){
+					msg_id = (msg_id - 1)%UINT_MAX;
+				}
+
+				result = htonl(temp_result);
+			}
 		break;
+
 		case ERROR:
 			printf("[ERROR] Cannot get service code\n");
+			result = 2;
 		break;
+
 		default:
 			printf("[ERROR] Error executing requested service\n");
+			result = 2;
 		break;
 	}
 
-
-	//Send service result back to client
-	printUsers(usr_list);
+	//Send connect service result back to client
 	reply = (char*) &result;
 	if(write(s_local , reply, sizeof(int))<0){
-		printf("[ERROR] Error sending reply\n");
+		printf("[ERROR] Cannot send reply\n");
 	}
 
-	//free(local_usrname);
+	//TODO:DELETE prints
+	printUsers(usr_list);
 
-	/*
-	printf("Received message: %s %s\n", service_msg, user_msg);
-	int32_t one = htonl(1);
-	char *data = (char*) &one;
-	//Send the message back to client
-	if(write(s_local , data, sizeof(int))<0){
-		printf("[ERROR] Error sending reply\n");
-	}
-	*/
 
 	*service_msg = '\0';
 	*user_msg = '\0';
+	*content_msg = '\0';
 
 
 	close(s_local);
