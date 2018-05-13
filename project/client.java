@@ -16,23 +16,14 @@ class client {
 		ERROR,
 		USER_ERROR
 	};
-	/********************* CLASSES ********************/
-
-	private static class User_Socket{
-		ServerSocket sc;
-		String user;
-
-		private User_Socket(ServerSocket sc, String user){
-			this.sc = sc;
-			this.user = user;
-		}
-	}
 
 	/******************* ATTRIBUTES *******************/
 
 	private static String _server   = null;
 	private static int _port = -1;
-	private static ArrayList<User_Socket> user_socket_list = new ArrayList <User_Socket>();
+	private static Boolean user_connected = false;
+	private static ServerSocket client_socket;
+	private static String current_user;
 
 	/********************* METHODS ********************/
 
@@ -43,8 +34,8 @@ class client {
 	 * @return USER_ERROR if the user is already registered
 	 * @return ERROR if another error occurred
 	 */
-	static RC register(String user)
-	{
+	static RC register(String user){
+
 		try{
 			// 5.1.1 Connects to the server, according to the IP and port passed in the command line to the program.
       Socket sc = new Socket(_server,_port);
@@ -64,6 +55,7 @@ class client {
 			// 5.1.4 Return:
 			switch (result){
 				case 0: // 0: Register succesful
+					// Prepare and store class in the ArrayList
 					System.out.print("REGISTER OK\n");
 					return RC.OK;
 				case 1:  // 1: The user was previously registered
@@ -79,7 +71,6 @@ class client {
     }
     catch (Exception e){
       System.err.println("[ERROR] Unable to stablish connection with the specified host");
-      e.printStackTrace();
     }
 		return RC.ERROR;
 	}
@@ -91,8 +82,7 @@ class client {
 	 * @return USER_ERROR if the user does not exist
 	 * @return ERROR if another error occurred
 	 */
-	static RC unregister(String user)
-	{
+	static RC unregister(String user){
 		try{
 			// 5.2.1 Connects to the server, according to the IP and port passed in the command line to the program.
 			Socket sc = new Socket(_server,_port);
@@ -113,6 +103,10 @@ class client {
 			switch (result){
 				case 0: // 0: Unregistration succesful
 					System.out.print("UNREGISTER OK \n");
+					if(user_connected && user.equals(current_user)){
+						user_connected = false;
+						client_socket.close();
+					}
 					return RC.OK;
 				case 1:  // 1: The user wasn't previously registered
 					System.out.print("USER DOES NOT EXIST \n");
@@ -127,26 +121,9 @@ class client {
 		}
 		catch (Exception e){
 			System.err.println("[ERROR] Unable to stablish connection with the specified host");
-			e.printStackTrace();
 		}
 		return RC.ERROR;
 	}
-
-	// /**
- // * @return Opened socket if succesful
- // * @return Throw exception if no free port was found
- // */
-	// static ServerSocket findSocket() throws Exception{
-	// 	for (int port = 1025; port < 65535 ; port++) { //Port must be in the range 1024 < port < 65535
-	// 		 try {
-	// 				 return new ServerSocket(port);
-	// 		 }
-	// 		 catch (Exception ex) {
-	// 				 continue; // try next port
-	// 		 }
-	//  	}
-	// 	throw new Exception("[ERROR] Unable to find a free port");
-	// }
 
 	/**
  * Parallel thread: listens.
@@ -162,13 +139,55 @@ class client {
 		@Override
 		public void run (){
 			Socket sc = null;
+			String operation;
+			String username;
+			String id;
+			String [] message = new String[255];
 			while(true){
 				try{
 					// Waiting for connection
 					sc = serverAddr.accept();
+
+					//5.6.2  The string ”SEND MESSAGE” or ”SEND MESS ACK” is sent indicating the operation.
 					InputStream istream = sc.getInputStream();
-					ObjectInput in 			= new ObjectInputStream(istream);
-					// TO DO: MESSAGE RECEPTION
+					ObjectInput input 	= new ObjectInputStream(istream);
+					operation = (String) input.readObject();
+					System.out.println(operation);
+						if(operation.equals("SEND_MESSAGE")){//Operation SEND_MESSAGE received
+						  //5.6.3 A string is sent with the name that identifies the user sending the message
+							istream = sc.getInputStream();
+							input   = new ObjectInputStream(istream);
+							username = (String) input.readObject();
+
+							//5.6.4 A string is sent by encoding the identifier associated with the message
+							istream = sc.getInputStream();
+							input   = new ObjectInputStream(istream);
+							id = (String) input.readObject();
+
+							//5.6.5 A string is sent with the message
+							istream = sc.getInputStream();
+							input   = new ObjectInputStream(istream);
+							message = (String[]) input.readObject();
+
+							//Display received message
+							System.out.println("MESSAGE "+id+" FROM "+username+" : \n"+message+"\nEND");
+
+							//5.6.6 Close the connection.
+							sc.close();
+						}
+						else if(operation.equals("SEND_MESS_ACK")){ // Operation SEND_MESS_ACK received
+							//5.6.3 A string is sent by encoding the identifier associated with the message
+							istream = sc.getInputStream();
+							input   = new ObjectInputStream(istream);
+							id = (String) input.readObject();
+
+							//Display confirmation messages
+							System.out.println("SEND MESSAGE "+id+" OK");
+
+							//5.6.4 Close the connection.
+							sc.close();
+						}
+						else System.out.println("[ERROR] Unknown operation code received");
 				}
 				catch(Exception e){
 					System.out.println("Thread listening on "+serverAddr.getLocalPort()+" has stopped listening");
@@ -187,73 +206,81 @@ class client {
 	 * @return ERROR if another error occurred
 	 */
 	 static RC connect(String user){
+		 //Only one user can be connected at the same time
+		 if(user_connected){
+			 System.out.println("[ERROR]An user is already connected, please disconnect first before connecting a new user");
+			 return RC.ERROR;
+		 }
 
-		// Internally the client will search for a valid free port
-			// 2 Options
-
-			// Option 1: We don't mind the port used
-			// ServerSocket client_socket = new ServerSocket(0);
-			// Option 2: We want the port to be within a range
-			// ServerSocket client_socket = findSocket();
 		Thread client_thread = null;
+		ServerSocket local_socket = null;
+
 		try{
 
-			//Option 1
-			ServerSocket client_socket = new ServerSocket(0);
-			// Prepare class to be stored within ArrayList if the connection is succesful
-			User_Socket current_us = new User_Socket(client_socket, user);
+			// Internally the client will search for a valid free port
+			local_socket = new ServerSocket(0);
 			// Create a thread that will be in charge of listening (on the IP and port selected) and attend to the messages sent by other users from the server.
-			client_thread = new Listener(client_socket);
+			client_thread = new Listener(local_socket);
 			client_thread.start();
+
 			// 5.3.1 Connects to the server, according to the IP and port passed in the command line to the program.
 			Socket sc = new Socket(_server,_port);
+
 			// 5.3.2 The string ”CONNECT” is sent indicating the operation.
 			OutputStream ostream = sc.getOutputStream();
 			ostream.write("CONNECT\0".getBytes());
 			ostream.flush();
+
 			// 5.3.3 A string is sent with the name of the user.
 			ostream.write((user + "\0").getBytes());
 			ostream.flush();
+
 			// 5.3.4 We send a string of characters encoding the client’s listening port number.
-			String port = String.valueOf(client_socket.getLocalPort());
+			String port = String.valueOf(local_socket.getLocalPort());
 			ostream.write((port + "\0").getBytes());
 			ostream.flush();
 
 			// 5.3.5 It receives a byte from the server that encodes the result of the operation.
 			DataInputStream istream = new DataInputStream(sc.getInputStream());
 			int result = istream.readInt();
-
 		  // 5.3.6 Close the connection.
 			sc.close();
 
 			// 5.3.5 Return
 			switch (result){
 				case 0: // 0: Connection succesful
-					user_socket_list.add(current_us);
 					System.out.print("CONNECT OK \n");
+					user_connected = true;
+					current_user = user;
+					client_socket = local_socket;
 					return RC.OK;
 				case 1:  // 1: The user wasn't previously registered
-					current_us.sc.close();//Close the socket opened
+				  local_socket.close();
 					System.out.print("CONNECT FAIL, USER DOES NOT EXIST \n");
 					return RC.ERROR;
 				case 2:  // 2: The client is already connected
-					current_us.sc.close();//Close the socket opened
+					local_socket.close();//Close the socket opened
 					System.out.print("USER ALREADY CONNECTED \n");
 					return RC.ERROR;
 				case 3:  // 3: There was some other error
-					current_us.sc.close();//Close the socket opened
+					local_socket.close();//Close the socket opened
 					System.out.print("CONNECT FAIL \n");
 					return RC.ERROR;
 				default: // If the server returns any other thing
-					current_us.sc.close();//Close the socket opened
+					local_socket.close();//Close the socket opened
 					System.out.print("[ERROR] UNKNOWN SERVER MESSAGE \n");
 					return RC.ERROR;
 			}
 		}
 		catch(Exception e){
-			client_thread = null;
+			try{
+				local_socket.close();
+			}
+			catch( Exception socket){
+				System.err.println("[ERROR] Unable to close the socket");
+			}
+
 			System.err.println("[ERROR] Unable to stablish connection with the specified host");
-			e.printStackTrace();
 		}
 		return RC.ERROR;
 	}
@@ -266,22 +293,6 @@ class client {
 	 * @return ERROR if another error occurred
 	 */
 	static RC disconnect(String user){
-		// Regardles of what the server response is we have to disconnect the users
-
-		// Iterate through the user's list and find the socket corresponding to the one we want to close
-		for(int i = 0; i < user_socket_list.size(); i++){
-			if(user_socket_list.get(i).user.equals(user)){
-				System.out.println("Disconnected user "+user_socket_list.get(i).user);
-				try{
-					user_socket_list.get(i).sc.close();
-				}
-				catch(Exception e){
-					System.out.println("[ERROR] Unable to close the socket");
-				}
-				break;
-			}
-		}
-		// Comunicate the disconnect to the server
 		try{
 			// 5.4.1 Connects to the server, according to the IP and port passed in the command line to the program.
       Socket sc = new Socket(_server,_port);
@@ -302,12 +313,16 @@ class client {
 			switch (result){
 				case 0: // 0: Connection succesful
 					System.out.print("DISCONNECT OK \n");
+					user_connected = false;
+					current_user = null;
+					client_socket.close();
+
 					return RC.OK;
 				case 1:  // 1: The user wasn't previously registered
-					System.out.print("DISCONNECT FAIL, USER DOES NOT EXIST \n");
+					System.out.print("DISCONNECT FAIL / USER DOES NOT EXIST \n");
 					return RC.ERROR;
 				case 2:  // 2: The client is already disconnected
-					System.out.print("USER NOT CONNECTED \n");
+					System.out.print("DISCONNECT FAIL / USER NOT CONNECTED \n");
 					return RC.ERROR;
 				case 3:  // 3: There was some other error
 					System.out.print("DISCONNECT FAIL \n");
@@ -319,10 +334,7 @@ class client {
     }
     catch (Exception e){
       System.err.println("[ERROR] Unable to stablish connection with the specified host");
-      e.printStackTrace();
     }
-
-
 		return RC.ERROR;
 	}
 
@@ -334,9 +346,64 @@ class client {
 	 * @return USER_ERROR if the user is not connected (the message is queued for delivery)
 	 * @return ERROR the user does not exist or another error occurred
 	 */
-	static RC send(String user, String message)
-	{
-		// Write your code here
+	static RC send(String user, String message)	{
+		try{
+			// 5.5.1 Connects to the server, according to the IP and port passed in the command line to the program.
+			Socket sc = new Socket(_server,_port);
+
+			// 5.5.2 The string ”SEND” is sent indicating the operation
+			OutputStream ostream = sc.getOutputStream();
+			ostream.write("SEND\0".getBytes());
+			ostream.flush();
+
+			// 5.5.3 A string is sent with the name that identifies the user sending the message.
+			ostream.write((current_user + "\0").getBytes()); //FROM
+			ostream.flush();
+
+			// 5.5.4 A string is sent with the name that identifies the recipient user of the message.
+			ostream.write((user + "\0").getBytes()); //TO
+			ostream.flush();
+
+			// 5.5.5 A string is sent in which the message to be sent is encoded.
+			ostream.write((message + "\0").getBytes());
+			ostream.flush();
+
+			// 5.5.6 It receives from the server a byte that encodes the result of the operation:
+			// 0 in case of success, 1 if the user is previously registered, 2 in any other case.
+			DataInputStream intstream = new DataInputStream(sc.getInputStream());
+			int result = intstream.readInt();;
+
+			System.out.println(result);
+			// 5.5.6 Return:
+			switch (result){
+				case 0: // 0: Unregistration succesful
+					// 	5.5.6 In this case, you will then receive a character string that will encode the numeric identifier assigned to the message
+					BufferedReader stringstream = new BufferedReader (new InputStreamReader(sc.getInputStream()));
+					System.out.println("SEND OK - MESSAGE"+((String) stringstream.readLine()));
+					// 5.5.7 Close the connection
+					sc.close();
+					return RC.OK;
+				case 1:  // 1: The user wasn't previously registered
+					System.out.print("SEND FAIL / USER DOES NOT EXIST \n");
+					// 5.5.7 Close the connection
+					sc.close();
+					return RC.ERROR;
+				case 2:  // 2: There was some other error
+					System.out.print("SEND FAIL \n");
+					// 5.5.7 Close the connection
+					sc.close();
+					return RC.ERROR;
+				default: // If the server returns any other thing
+					System.out.print("[ERROR] UNKNOWN SERVER MESSAGE \n");
+					// 5.5.7 Close the connection
+					sc.close();
+					return RC.ERROR;
+			}
+		}
+		catch (Exception e){
+			System.err.println("[ERROR] Unable to stablish connection with the specified host");
+			e.printStackTrace(System.out);
+		}
 		return RC.ERROR;
 	}
 
@@ -408,6 +475,10 @@ class client {
                     else if (line[0].equals("QUIT")){
 						if (line.length == 1) {
 							exit = true;
+							if(user_connected){
+								user_connected = false;
+								client_socket.close();
+							}
 						} else {
 							System.out.println("Syntax error. Use: QUIT");
 						}
@@ -420,7 +491,7 @@ class client {
 				}
 			} catch (java.io.IOException e) {
 				System.out.println("Exception: " + e);
-				e.printStackTrace();
+
 			}
 		}
 	}

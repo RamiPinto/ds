@@ -14,8 +14,8 @@ all: $(BIN_FILES)
 server: server.o libservices.a
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@ -L. -lservices -lrt
 
-test: test.o
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@ -lrt
+test: test.o libservices.a
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@ -L. -lservices -lrt
 
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $<

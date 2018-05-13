@@ -8,16 +8,18 @@
 #include <arpa/inet.h> //inet addr
 #include <pthread.h> //threads
 #include <unistd.h> // for close
+#include <inttypes.h> //for print int_32
 #include "services.h"
+
 
 pthread_mutex_t mutex_msg;
 int busy = TRUE;  //TRUE =1
 pthread_cond_t cond_msg;
 
 user_t *usr_list;
+unsigned int msg_id = 0;
 
 void *connection_handler(void *);
-ssize_t read_line(int fd, void *buffer, int n);
 
 int main(int argc, char **argv){
 
@@ -25,6 +27,7 @@ int main(int argc, char **argv){
 	char * pflag = "-p";
 	int socket_desc , c, port, client_sock;
 	struct sockaddr_in s_server , s_client;
+	targs_t *myargs; //For passing arguments to the thread
 
 	pthread_t thid;
 	pthread_attr_t t_attr;  /*thread atributes*/
@@ -99,10 +102,15 @@ int main(int argc, char **argv){
 		}
 		printf("Connection accepted.\nClient connected with ip address: %s\n",inet_ntoa(s_client.sin_addr));
 
-		// Here we create a thread to handle the connection with the client. Meanwhile, the parent process
-		// will still listening
+		// Here we create a thread to handle the connection with the client. Meanwhile, the parent process will still listening
 
-		if( pthread_create( &thid , &t_attr ,  connection_handler , (void*) &client_sock) < 0){
+		//Fill arguments
+		myargs = malloc(sizeof(targs_t));
+		myargs->client_sdesc = client_sock;
+		myargs->client_saddr = s_client;
+
+		//Create thread
+		if( pthread_create( &thid , &t_attr ,  connection_handler , (void*) myargs) < 0){
 			perror("Could not create thread");
 			return 1;
 		}
@@ -116,8 +124,8 @@ int main(int argc, char **argv){
 		busy = TRUE;
 
 
-		//Now join the thread , so that we dont terminate before the thread
-		//pthread_join( thid , NULL);
+		//TODO: check if needed: Now join the thread , so that we dont terminate before the thread
+		pthread_join( thid , NULL);
 
 	} // End While
 
@@ -127,21 +135,29 @@ int main(int argc, char **argv){
 	return 0;
 }
 
-void *connection_handler(void *socket_desc)
+void *connection_handler(void *myargs)
 {
-	int s_local;
-	char service_msg[MAX_BUF] = { '\0' };
-	char user_msg[MAX_BUF] = { '\0' };
-	//char port_msg[MAX_BUF] = { '\0' };
+	targs_t *temp_args = (targs_t *) myargs;
+	int s_local, temp_result;
+	struct sockaddr_in saddr_local;
+	uint32_t result = htonl(2);
+	char * reply, local_msgid[sizeof(unsigned int)] = "";
+	//char * sender_name;
+	char service_msg[MAX_BUF] = { '\0' }, sender_msg[MAX_BUF] = { '\0' }, receiver_msg[MAX_BUF] = { '\0' }, content_msg[MAX_BUF] = { '\0' };
+
+	memset(&saddr_local, 0, sizeof(saddr_local));
 
 	pthread_mutex_lock(&mutex_msg);
 
 	//Get the socket descriptor
-	s_local = *(int*)socket_desc;
-	busy = FALSE;
+	s_local = (int) temp_args->client_sdesc;
+	saddr_local = (struct sockaddr_in) temp_args->client_saddr;
 
-	pthread_cond_signal(&cond_msg);
-	pthread_mutex_unlock(&mutex_msg);
+	free(myargs);
+
+	//TODO: Check where unlock mutex
+
+	printUsers(usr_list);
 
 	//Receive a message from client
 	if (read_line(s_local, service_msg, MAX_BUF) < 0) { // Requested operation.
@@ -149,24 +165,105 @@ void *connection_handler(void *socket_desc)
 		bzero(service_msg, MAX_BUF); // Clean buffer.
 	}
 
-	if (read_line(s_local, user_msg, MAX_BUF) < 0) { // Requested operation.
+	if (read_line(s_local, sender_msg, MAX_BUF) < 0) { // Requested operation.
 		printf("[ERROR] Cannot read client request\n"); // Error.
-		bzero(service_msg, MAX_BUF); // Clean buffer.
+		bzero(sender_msg, MAX_BUF); // Clean buffer.
 	}
 
-	printf("Received message: %s %s\n", service_msg, user_msg);
-	int32_t one = htonl(1);
-	char *data = (char*) &one;
-	//Send the message back to client
-	if(write(s_local , data, sizeof(int))<0){
-		printf("[ERROR] Error sending reply\n");
+	printf("Received message: %s %s (opkey=%d)\n", service_msg, sender_msg,keyfromstring(service_msg));
+
+	switch(keyfromstring(service_msg)){
+		case REGISTER:
+			result = htonl(register_usr(&usr_list, sender_msg));
+		break;
+
+		case UNREGISTER:
+			result = htonl(remove_usr(&usr_list, sender_msg));
+		break;
+
+		case CONNECT:
+			result = htonl(connect_usr(usr_list, sender_msg, saddr_local));
+
+		break;
+
+		case DISCONNECT:
+			result = htonl(disconnect_usr(usr_list, sender_msg));
+		break;
+
+		case SEND:
+			//Get receivers name
+			if (read_line(s_local, receiver_msg, MAX_BUF) < 0) { // Requested operation.
+				printf("[ERROR] Cannot read client request\n"); // Error.
+				result = htonl(2);
+				bzero(receiver_msg, MAX_BUF); // Clean buffer.
+			}
+			else{
+				//Get content of the message
+				if (read_line(s_local, content_msg, MAX_BUF) < 0) { // Requested operation.
+					printf("[ERROR] Cannot read client request\n"); // Error.
+					result = htonl(2);
+					bzero(content_msg, MAX_BUF); // Clean buffer.
+				}
+				else{
+					if(userConnected(usr_list, sender_msg) == TRUE){
+						//Get message id and store the message
+						msg_id = (msg_id + 1)%UINT_MAX;
+						temp_result = store_msg(usr_list, msg_id, sender_msg, receiver_msg, content_msg);
+
+						if(temp_result != 0){
+							msg_id = (msg_id - 1)%UINT_MAX;
+						}
+						else{
+							sprintf(local_msgid, "%d", msg_id);
+						}
+
+						result = htonl(temp_result);
+					}
+				}
+			}
+		break;
+
+		case ERROR:
+			printf("[ERROR] Cannot get service code\n");
+			result = htonl(2);
+		break;
+
+		default:
+			printf("[ERROR] Error executing requested service\n");
+			result = htonl(2);
+		break;
 	}
+
+	//Send connect service result back to client
+	reply = (char*) &result;
+	printf("Service request result:" "%" PRIu32 "\n", ntohl(result));
+	if(write_line(s_local , reply, sizeof(int))<0){
+		printf("[ERROR] Cannot send reply\n");
+	}
+
+	if(keyfromstring(service_msg) == SEND && temp_result == 0){	//If send success then send msg id
+		strcpy(reply, (char*) local_msgid);
+		if(write_line(s_local , reply, sizeof(unsigned int))<0){
+			printf("[ERROR] Cannot send reply\n");
+		}
+	}
+
+	//TODO:DELETE prints
+	printUsers(usr_list);
+
 
 	*service_msg = '\0';
-	*user_msg = '\0';
+	*sender_msg = '\0';
+	*receiver_msg = '\0';
+	*content_msg = '\0';
 
 
 	close(s_local);
+	busy = FALSE;
+
+	pthread_cond_signal(&cond_msg);
+	pthread_mutex_unlock(&mutex_msg);
+
 	pthread_exit(NULL);
 	return 0;
 }
