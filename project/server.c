@@ -139,7 +139,7 @@ void *connection_handler(void *myargs)
 	targs_t *temp_args = (targs_t *) myargs;
 	int s_local, temp_result;
 	struct sockaddr_in saddr_local;
-	int32_t result = 2;
+	int32_t result = htonl(2);
 	char * reply;
 	//char * sender_name;
 	char service_msg[MAX_BUF] = { '\0' }, sender_msg[MAX_BUF] = { '\0' }, receiver_msg[MAX_BUF] = { '\0' }, content_msg[MAX_BUF] = { '\0' };
