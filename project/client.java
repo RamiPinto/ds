@@ -365,8 +365,9 @@ class client {
 			ostream.flush();
 
 			// 5.5.5 A string is sent in which the message to be sent is encoded.
-			ostream.write((message + "\0").getBytes());
-			ostream.flush();
+			BufferedWriter outputstring = new BufferedWriter (new OutputStreamWriter(sc.getOutputStream()));
+			outputstring.write((message + "\0"));
+			outputstring.flush();
 
 			// 5.5.6 It receives from the server a byte that encodes the result of the operation:
 			// 0 in case of success, 1 if the user is previously registered, 2 in any other case.
