@@ -342,12 +342,11 @@ int userConnected(user_t *head, char *name)
 	user_t *temp_user = head;
 
 	while(temp_user != NULL){
-		if(temp_user->status == ON){
+		if(strcmp((char *)temp_user->usr_name, name) == 0 && temp_user->status == ON){
 			return TRUE;
 		}
 		temp_user = temp_user->next_usr;
 	}
-
 	return FALSE;
 }
 

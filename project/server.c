@@ -8,6 +8,7 @@
 #include <arpa/inet.h> //inet addr
 #include <pthread.h> //threads
 #include <unistd.h> // for close
+#include <inttypes.h> //for print int_32
 #include "services.h"
 
 
@@ -139,7 +140,7 @@ void *connection_handler(void *myargs)
 	targs_t *temp_args = (targs_t *) myargs;
 	int s_local, temp_result;
 	struct sockaddr_in saddr_local;
-	int32_t result = htonl(2);
+	uint32_t result = htonl(2);
 	char * reply;
 	//char * sender_name;
 	char service_msg[MAX_BUF] = { '\0' }, sender_msg[MAX_BUF] = { '\0' }, receiver_msg[MAX_BUF] = { '\0' }, content_msg[MAX_BUF] = { '\0' };
@@ -204,10 +205,7 @@ void *connection_handler(void *myargs)
 					bzero(content_msg, MAX_BUF); // Clean buffer.
 				}
 				else{
-					if(userConnected(usr_list, sender_msg) == FALSE){
-						result = htonl(2);
-					}
-					else{
+					if(userConnected(usr_list, sender_msg) == TRUE){
 						//Get message id and store the message
 						msg_id = (msg_id + 1)%UINT_MAX;
 						temp_result = store_msg(usr_list, msg_id, sender_msg, receiver_msg, content_msg);
@@ -224,18 +222,18 @@ void *connection_handler(void *myargs)
 
 		case ERROR:
 			printf("[ERROR] Cannot get service code\n");
-			result = 2;
+			result = htonl(2);
 		break;
 
 		default:
 			printf("[ERROR] Error executing requested service\n");
-			result = 2;
+			result = htonl(2);
 		break;
 	}
 
 	//Send connect service result back to client
 	reply = (char*) &result;
-	printf("Service request result: %d\n", (int)result);
+	printf("Service request result:" "%" PRIu32 "\n", ntohl(result));
 	if(write(s_local , reply, sizeof(int))<0){
 		printf("[ERROR] Cannot send reply\n");
 	}
