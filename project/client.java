@@ -152,7 +152,7 @@ class client {
 					InputStream istream = sc.getInputStream();
 					ObjectInput input 	= new ObjectInputStream(istream);
 					operation = (String) input.readObject();
-
+					System.out.println(operation);
 						if(operation.equals("SEND_MESSAGE")){//Operation SEND_MESSAGE received
 						  //5.6.3 A string is sent with the name that identifies the user sending the message
 							istream = sc.getInputStream();
@@ -190,7 +190,6 @@ class client {
 						else System.out.println("[ERROR] Unknown operation code received");
 				}
 				catch(Exception e){
-					System.out.println("Exception: " + e);
 					System.out.println("Thread listening on "+serverAddr.getLocalPort()+" has stopped listening");
 					return;
 				}
@@ -214,11 +213,12 @@ class client {
 		 }
 
 		Thread client_thread = null;
+		ServerSocket local_socket = null;
 
 		try{
 
 			// Internally the client will search for a valid free port
-			ServerSocket local_socket = new ServerSocket(0);
+			local_socket = new ServerSocket(0);
 			// Create a thread that will be in charge of listening (on the IP and port selected) and attend to the messages sent by other users from the server.
 			client_thread = new Listener(local_socket);
 			client_thread.start();
@@ -243,7 +243,6 @@ class client {
 			// 5.3.5 It receives a byte from the server that encodes the result of the operation.
 			DataInputStream istream = new DataInputStream(sc.getInputStream());
 			int result = istream.readInt();
-
 		  // 5.3.6 Close the connection.
 			sc.close();
 
@@ -274,7 +273,13 @@ class client {
 			}
 		}
 		catch(Exception e){
-			client_thread = null;
+			try{
+				local_socket.close();
+			}
+			catch( Exception socket){
+				System.err.println("[ERROR] Unable to close the socket");
+			}
+
 			System.err.println("[ERROR] Unable to stablish connection with the specified host");
 		}
 		return RC.ERROR;
@@ -368,7 +373,7 @@ class client {
 			DataInputStream intstream = new DataInputStream(sc.getInputStream());
 			int result = intstream.readInt();;
 
-
+			System.out.println(result);
 			// 5.5.6 Return:
 			switch (result){
 				case 0: // 0: Unregistration succesful
