@@ -54,18 +54,18 @@ int connect_usr(user_t *head, char *name, struct sockaddr_in socket);
 int disconnect_usr(user_t *head, char *name);
 
 int send_pending_msg(user_t *head, char *receiver);
-int store_msg(user_t *head, int msg_id, char *sender, char *receiver, char *content);
+int store_msg(user_t *head, unsigned int msg_id, char *sender, char *receiver, char *content);
 
 /*SEARCH FUNCTIONS*/
 int userExists(user_t *head, char *name);
-//int userConnected(user_t *head, char *name);
-char * searchUserNameByIp(user_t *head, struct sockaddr_in socket_sender);
+int userConnected(user_t *head, char *name);
+//char * searchUserNameByIp(user_t *head, struct sockaddr_in socket_sender);
 
 /*AUXILIARY FUNCTIONS*/
 //ssize_t write_line(int fd, void *buffer, size_t n);
 ssize_t read_line(int fd, void *buffer, int n);
 int keyfromstring(char *key);
-int comp_sockaddr(struct sockaddr_in sa, struct sockaddr_in sb);
+//int comp_sockaddr(struct sockaddr_in sa, struct sockaddr_in sb);
 
 /*DEBUGGING FUNCTIONS*/
 void printUsers(user_t *head);

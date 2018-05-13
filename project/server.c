@@ -140,8 +140,9 @@ void *connection_handler(void *myargs)
 	int s_local, temp_result;
 	struct sockaddr_in saddr_local;
 	int32_t result = 2;
-	char * reply, *sender_name;
-	char service_msg[MAX_BUF] = { '\0' }, user_msg[MAX_BUF] = { '\0' }, content_msg[MAX_BUF] = { '\0' };
+	char * reply;
+	//char * sender_name;
+	char service_msg[MAX_BUF] = { '\0' }, sender_msg[MAX_BUF] = { '\0' }, receiver_msg[MAX_BUF] = { '\0' }, content_msg[MAX_BUF] = { '\0' };
 
 	memset(&saddr_local, 0, sizeof(saddr_local));
 
@@ -163,54 +164,61 @@ void *connection_handler(void *myargs)
 		bzero(service_msg, MAX_BUF); // Clean buffer.
 	}
 
-	if (read_line(s_local, user_msg, MAX_BUF) < 0) { // Requested operation.
+	if (read_line(s_local, sender_msg, MAX_BUF) < 0) { // Requested operation.
 		printf("[ERROR] Cannot read client request\n"); // Error.
-		bzero(user_msg, MAX_BUF); // Clean buffer.
+		bzero(sender_msg, MAX_BUF); // Clean buffer.
 	}
 
-	printf("Received message: %s %s (opkey=%d)\n", service_msg, user_msg,keyfromstring(service_msg));
+	printf("Received message: %s %s (opkey=%d)\n", service_msg, sender_msg,keyfromstring(service_msg));
 
 	switch(keyfromstring(service_msg)){
 		case REGISTER:
-			result = htonl(register_usr(&usr_list, user_msg));
+			result = htonl(register_usr(&usr_list, sender_msg));
 		break;
 
 		case UNREGISTER:
-			result = htonl(remove_usr(&usr_list, user_msg));
+			result = htonl(remove_usr(&usr_list, sender_msg));
 		break;
 
 		case CONNECT:
-			result = htonl(connect_usr(usr_list, user_msg, saddr_local));
+			result = htonl(connect_usr(usr_list, sender_msg, saddr_local));
 
 		break;
 
 		case DISCONNECT:
-			result = htonl(disconnect_usr(usr_list, user_msg));
+			result = htonl(disconnect_usr(usr_list, sender_msg));
 		break;
 
 		case SEND:
-			//Get content of the message
-			if (read_line(s_local, content_msg, MAX_BUF) < 0) { // Requested operation.
+			//Get receivers name
+			if (read_line(s_local, receiver_msg, MAX_BUF) < 0) { // Requested operation.
 				printf("[ERROR] Cannot read client request\n"); // Error.
-				bzero(content_msg, MAX_BUF); // Clean buffer.
-			}
-
-			//Get senders name by ip
-			sender_name = searchUserNameByIp(usr_list, saddr_local);
-			if(sender_name == NULL){
-				printf("[ERROR] Unable to get senders name. Cannot send message.\n");
-				result = 2;
+				result = htonl(2);
+				bzero(receiver_msg, MAX_BUF); // Clean buffer.
 			}
 			else{
-				//Get message id and store the message
-				msg_id = (msg_id + 1)%UINT_MAX;
-				temp_result = store_msg(usr_list, msg_id, sender_name, user_msg, content_msg);
-
-				if(temp_result != 0){
-					msg_id = (msg_id - 1)%UINT_MAX;
+				//Get content of the message
+				if (read_line(s_local, content_msg, MAX_BUF) < 0) { // Requested operation.
+					printf("[ERROR] Cannot read client request\n"); // Error.
+					result = htonl(2);
+					bzero(content_msg, MAX_BUF); // Clean buffer.
 				}
+				else{
+					if(userConnected(usr_list, sender_msg) == FALSE){
+						result = htonl(2);
+					}
+					else{
+						//Get message id and store the message
+						msg_id = (msg_id + 1)%UINT_MAX;
+						temp_result = store_msg(usr_list, msg_id, sender_msg, receiver_msg, content_msg);
 
-				result = htonl(temp_result);
+						if(temp_result != 0){
+							msg_id = (msg_id - 1)%UINT_MAX;
+						}
+
+						result = htonl(temp_result);
+					}
+				}
 			}
 		break;
 
@@ -227,6 +235,7 @@ void *connection_handler(void *myargs)
 
 	//Send connect service result back to client
 	reply = (char*) &result;
+	printf("Service request result: %d\n", (int)result);
 	if(write(s_local , reply, sizeof(int))<0){
 		printf("[ERROR] Cannot send reply\n");
 	}
@@ -236,7 +245,8 @@ void *connection_handler(void *myargs)
 
 
 	*service_msg = '\0';
-	*user_msg = '\0';
+	*sender_msg = '\0';
+	*receiver_msg = '\0';
 	*content_msg = '\0';
 
 

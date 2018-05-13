@@ -20,7 +20,7 @@ int register_usr(user_t **head_ref, char *name)
 
 		//Fill data
 		if(strcpy((char *) new_user->usr_name, name)<0){
-			printf("ERROR copying name");
+			printf("[ERROR] copying name");
 			return 2;
 		}
 
@@ -101,6 +101,7 @@ int connect_usr(user_t *head, char *name, struct sockaddr_in socket)
 					temp_user->socket = socket;
 
 					if(send_pending_msg(head,name) != 0){
+						temp_user->status = OFF;
 						printf("CONNECT %s FAIL\n", name);
 						return 3;
 					}
@@ -162,7 +163,7 @@ int disconnect_usr(user_t *head, char *name)
 * @param: Pointer to first element of the user list and the message data: message id, sender and receiver names and the message content
 * @return: 0 if success, 1 if user doesn't exist and 2 in any other case.
 */
-int store_msg(user_t *head, int msg_id, char *sender, char *receiver, char *content)
+int store_msg(user_t *head, unsigned int msg_id, char *sender, char *receiver, char *content)
 {
 	user_t *temp_user = head;
 	msg_t *new_msg = NULL;
@@ -244,6 +245,8 @@ int send_pending_msg(user_t *head, char *receiver)
 
 		if(strcmp((char *)temp_user->usr_name, receiver) == 0){
 
+			if(temp_msg == NULL) return 0;
+
 			temp_msg = temp_user->msg;
 			receiver_saddr = (struct sockaddr *) &(temp_user->socket);
 
@@ -283,7 +286,7 @@ int send_pending_msg(user_t *head, char *receiver)
 				}
 
 				//Send message ACK to sender
-				if( store_msg(head,(int) 0, (char *) SERVER_NAME, sender, (char *) "SEND_MESS_ACK" ) != 0) return 2;
+				if( store_msg(head, temp_msg->id, (char *) SERVER_NAME, sender, (char *) "SEND_MESS_ACK" ) != 0) return 2;
 
 				printf("SEND MESSAGE %s FROM %s TO %s\n", msg_id, sender, receiver);
 
@@ -319,7 +322,7 @@ int userExists(user_t *head, char *name)
 	user_t *temp_user = head;
 
 	while(temp_user != NULL){
-		if(strcmp((char *)temp_user->usr_name, name) == 0){
+		if(strcmp((char *)temp_user->usr_name, name) == 0 || strcmp(SERVER_NAME, name) == 0){
 			return TRUE;
 		}
 		temp_user = temp_user->next_usr;
@@ -334,7 +337,7 @@ int userExists(user_t *head, char *name)
 * @param: First element of the users list and name of the user to check
 * @return: TRUE (1) if the user is connected. FALSE (0) if it is not.
 */
-/*int userConnected(user_t *head, char *name)
+int userConnected(user_t *head, char *name)
 {
 	user_t *temp_user = head;
 
@@ -346,7 +349,7 @@ int userExists(user_t *head, char *name)
 	}
 
 	return FALSE;
-}*/
+}
 
 
 /*
@@ -354,7 +357,7 @@ int userExists(user_t *head, char *name)
 * @param: Pointer to first element of the user list and the socket struct with the IP and port information.
 * @return: If the user exists, a string (char *) with the name of the user. If not, NULL.
 */
-char * searchUserNameByIp(user_t *head, struct sockaddr_in socket_sender)
+/*char * searchUserNameByIp(user_t *head, struct sockaddr_in socket_sender)
 {
 	user_t *temp_user = head;
 
@@ -366,7 +369,7 @@ char * searchUserNameByIp(user_t *head, struct sockaddr_in socket_sender)
 	}
 
 	return NULL;
-}
+}*/
 
 void printUsers(user_t *head)
 {
@@ -505,10 +508,10 @@ int keyfromstring(char *key)
 * @param: Pointer of the two socket addresses.
 * @return: 0 if they are equal and 1 if they are not.
 */
-int comp_sockaddr(struct sockaddr_in sa, struct sockaddr_in sb)
+/*int comp_sockaddr(struct sockaddr_in sa, struct sockaddr_in sb)
 {
 	if((sa.sin_addr.s_addr == sb.sin_addr.s_addr) && (sa.sin_port == sb.sin_port)){
 		return 0;
 	}
 	return 1;
-}
+}*/
