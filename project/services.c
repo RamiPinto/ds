@@ -381,6 +381,7 @@ void printUsers(user_t *head)
 
 		for(i=0;temp_user!=NULL;i++){
 			printf("%d. User %s - Status %d\n", i, (char *)temp_user->usr_name, temp_user->status);
+			printMessages(head, temp_user->usr_name);
 			temp_user = temp_user->next_usr;
 		}
 	}
@@ -401,17 +402,20 @@ void printMessages(user_t *head, char *name)
 
 		if(strcmp((char *)temp_user->usr_name, name) == 0){
 			temp_msg = temp_user->msg;
-			printf("\n**LIST OF MESSAGES OF %s**\n", name);
-
-			for(i=0;temp_msg!=NULL;i++){
-				printf("\n%d. MESSAGE %d FROM %s\n%s\n", i,temp_msg->id, temp_msg->sender, temp_msg->content);
-				temp_msg = temp_msg->next_msg;
+			if(temp_msg == NULL ){
+				printf("Empty message list\n");
 			}
-			exit(0);
-		}
+			else{
+				printf("\n**LIST OF MESSAGES OF %s**\n", name);
 
+				for(i=0;temp_msg!=NULL;i++){
+					printf("\n	%d. MESSAGE %d FROM %s\n%s\n", i,temp_msg->id, temp_msg->sender, temp_msg->content);
+					temp_msg = temp_msg->next_msg;
+				}
+			}
+		}
+		temp_user = temp_user->next_usr;
 	}
-	printf("Empty message list\n");
 
 }
 /*
