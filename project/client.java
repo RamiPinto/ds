@@ -378,9 +378,8 @@ class client {
 			switch (result){
 				case 0: // 0: Unregistration succesful
 					// 	5.5.6 In this case, you will then receive a character string that will encode the numeric identifier assigned to the message
-					InputStream stringstream = sc.getInputStream();
-					ObjectInput input 	= new ObjectInputStream(stringstream);
-					System.out.println("SEND OK - MESSAGE"+((String) input.readObject()));
+					BufferedReader stringstream = new BufferedReader (new InputStreamReader(sc.getInputStream()));
+					System.out.println("SEND OK - MESSAGE"+((String) stringstream.readLine()));
 					// 5.5.7 Close the connection
 					sc.close();
 					return RC.OK;
