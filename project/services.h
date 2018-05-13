@@ -62,7 +62,7 @@ int userConnected(user_t *head, char *name);
 //char * searchUserNameByIp(user_t *head, struct sockaddr_in socket_sender);
 
 /*AUXILIARY FUNCTIONS*/
-//ssize_t write_line(int fd, void *buffer, size_t n);
+ssize_t write_line(int fd, void *buffer, size_t n);
 ssize_t read_line(int fd, void *buffer, int n);
 int keyfromstring(char *key);
 //int comp_sockaddr(struct sockaddr_in sa, struct sockaddr_in sb);

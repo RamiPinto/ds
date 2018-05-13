@@ -140,8 +140,8 @@ void *connection_handler(void *myargs)
 	targs_t *temp_args = (targs_t *) myargs;
 	int s_local, temp_result;
 	struct sockaddr_in saddr_local;
-	uint32_t result = htonl(2), local_msgid = htonl(0);
-	char * reply;
+	uint32_t result = htonl(2);
+	char * reply, local_msgid[sizeof(unsigned int)] = "";
 	//char * sender_name;
 	char service_msg[MAX_BUF] = { '\0' }, sender_msg[MAX_BUF] = { '\0' }, receiver_msg[MAX_BUF] = { '\0' }, content_msg[MAX_BUF] = { '\0' };
 
@@ -213,9 +213,11 @@ void *connection_handler(void *myargs)
 						if(temp_result != 0){
 							msg_id = (msg_id - 1)%UINT_MAX;
 						}
+						else{
+							sprintf(local_msgid, "%d", msg_id);
+						}
 
 						result = htonl(temp_result);
-						local_msgid = htonl(msg_id);
 					}
 				}
 			}
@@ -235,13 +237,13 @@ void *connection_handler(void *myargs)
 	//Send connect service result back to client
 	reply = (char*) &result;
 	printf("Service request result:" "%" PRIu32 "\n", ntohl(result));
-	if(write(s_local , reply, sizeof(int))<0){
+	if(write_line(s_local , reply, sizeof(int))<0){
 		printf("[ERROR] Cannot send reply\n");
 	}
 
 	if(keyfromstring(service_msg) == SEND && temp_result == 0){	//If send success then send msg id
-		reply = (char*) &local_msgid;
-		if(write(s_local , reply, sizeof(int))<0){
+		strcpy(reply, (char*) local_msgid);
+		if(write_line(s_local , reply, sizeof(unsigned int))<0){
 			printf("[ERROR] Cannot send reply\n");
 		}
 	}

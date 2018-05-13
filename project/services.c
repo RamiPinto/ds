@@ -463,7 +463,7 @@ ssize_t read_line(int fd, void *buffer, int n)
 	return total_read;
 }
 
-/*ssize_t write_line(int fd, void *buffer, size_t n) TODO: Check if needed
+ssize_t write_line(int fd, void *buffer, size_t n)
 {
 	int last_write = 0;
 	size_t length = n;
@@ -487,7 +487,7 @@ ssize_t read_line(int fd, void *buffer, int n)
 
 	if (last_write < 0) return -1; // Error.
 	else return 0; // Write done.
-}*/
+}
 
 /*SWITCH KEYWORDS*/
 static opkey_t lookuptable[5] = {
